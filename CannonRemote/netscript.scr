@@ -1,0 +1,165 @@
+# NetScript
+# 
+# Exported from BeerCannon.sch at 12/10/2014 8:56:18 PM
+# 
+# EAGLE Version 7.2.0 Copyright (c) 1988-2014 CadSoft
+# 
+Change Class 0;
+Signal 'A'        'U2'       '15' \
+                  ;
+Change Class 0;
+Signal 'ANALOG1'  'R3'       '2' \
+                  'U3'       '24' \
+                  ;
+Change Class 0;
+Signal 'ANALOG2'  'U1'       'H2' \
+                  'U3'       '25' \
+                  ;
+Change Class 0;
+Signal 'ANALOG3'  'U1'       'V2' \
+                  'U3'       '26' \
+                  ;
+Change Class 0;
+Signal 'CE'       'JP1'      '2' \
+                  'U3'       '15' \
+                  ;
+Change Class 0;
+Signal 'CSN'      'JP2'      '3' \
+                  'U3'       '16' \
+                  ;
+Change Class 0;
+Signal 'DIG6'     'U2'       '6' \
+                  'U3'       '12' \
+                  ;
+Change Class 0;
+Signal 'DIG7'     'U2'       '4' \
+                  'U3'       '13' \
+                  ;
+Change Class 0;
+Signal 'GND'      'BAT1'     '+' \
+                  'C1'       'A' \
+                  'C2'       '1' \
+                  'C3'       'A' \
+                  'C6'       '1' \
+                  'JP1'      '1' \
+                  'JP3'      '4' \
+                  'R1'       '2' \
+                  'R5'       '1' \
+                  'U1'       'H3' \
+                  'U1'       'V3' \
+                  'U2'       '2' \
+                  'U3'       '22' \
+                  'U3'       '8' \
+                  'U4'       '2' \
+                  'U5'       '2' \
+                  ;
+Change Class 0;
+Signal 'IRQ'      'JP2'      '1' \
+                  ;
+Change Class 0;
+Signal 'K'        'U2'       '16' \
+                  ;
+Change Class 0;
+Signal 'MISO'     'JP1'      '4' \
+                  'U3'       '18' \
+                  ;
+Change Class 0;
+Signal 'MOSI'     'JP2'      '2' \
+                  'U3'       '17' \
+                  ;
+Change Class 0;
+Signal 'N$1'      'LED1'     'C' \
+                  'R1'       '1' \
+                  ;
+Change Class 0;
+Signal 'N$2'      'D2'       'A' \
+                  'U$2'      '1' \
+                  ;
+Change Class 0;
+Signal 'N$3'      'R3'       '1' \
+                  'U1'       'B2A' \
+                  ;
+Change Class 0;
+Signal 'N$4'      'R2'       '1' \
+                  'U3'       '1' \
+                  ;
+Change Class 0;
+Signal 'N$5'      'R4'       '2' \
+                  'U$1'      '2' \
+                  ;
+Change Class 0;
+Signal 'N$7'      'C2'       '2' \
+                  'U3'       '9' \
+                  'Y1'       '1' \
+                  ;
+Change Class 0;
+Signal 'N$8'      'C6'       '2' \
+                  'U3'       '10' \
+                  'Y1'       '2' \
+                  ;
+Change Class 0;
+Signal 'N$10'     'D2'       'C' \
+                  'U4'       '1' \
+                  'U4'       '3' \
+                  ;
+Change Class 0;
+Signal 'N$12'     'RV1'      'P$2' \
+                  'U2'       '3' \
+                  ;
+Change Class 0;
+Signal 'N$13'     'R4'       '1' \
+                  'R5'       '2' \
+                  'U3'       '14' \
+                  ;
+Change Class 0;
+Signal 'N$14'     'RV1'      'P$1' \
+                  'U2'       '5' \
+                  ;
+Change Class 0;
+Signal 'PIN4'     'U2'       '14' \
+                  'U3'       '4' \
+                  ;
+Change Class 0;
+Signal 'PIN5'     'U2'       '13' \
+                  'U3'       '5' \
+                  ;
+Change Class 0;
+Signal 'PIN6'     'U2'       '12' \
+                  'U3'       '6' \
+                  ;
+Change Class 0;
+Signal 'PIN11'    'U2'       '11' \
+                  'U3'       '11' \
+                  ;
+Change Class 0;
+Signal 'SCK'      'JP1'      '3' \
+                  'U3'       '19' \
+                  ;
+Change Class 0;
+Signal 'V33'      'C1'       'C' \
+                  'JP2'      '4' \
+                  'JP3'      '3' \
+                  'U5'       '5' \
+                  ;
+Change Class 0;
+Signal 'VCC'      'BAT1'     '-' \
+                  'JP3'      '1' \
+                  'U$2'      '2' \
+                  'U5'       '1' \
+                  'U5'       '3' \
+                  ;
+Change Class 0;
+Signal 'VPWR'     'C3'       'C' \
+                  'JP3'      '2' \
+                  'LED1'     'A' \
+                  'R2'       '2' \
+                  'RV1'      'P$3' \
+                  'U$1'      '1' \
+                  'U1'       'B1A' \
+                  'U1'       'H1' \
+                  'U1'       'V1' \
+                  'U2'       '1' \
+                  'U3'       '20' \
+                  'U3'       '7' \
+                  'U4'       '5' \
+                  ;
