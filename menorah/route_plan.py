@@ -304,6 +304,11 @@ def route_all():
     T("GND", [(88.525, 134.0), (88.5, 132.75)], 0.4)                              # C4
     VIA("GND", 88.5, 132.75)
 
+    # ---- ESP32 ground pad: four vias to the front pour
+    for vx, vy in ((68.6, 132.2), (68.6, 134.2), (74.4, 132.2), (74.4, 134.2)):
+        T("GND", [(71.5, vy), (vx, vy)], 0.5)
+        VIA("GND", vx, vy)
+
     # ---- short escapes for the remaining east pads (6..12) so nothing can box them in
     for k, net in enumerate(["LED_DATA_3V3", "MIC_SCK", "MIC_WS", "MIC_SD", "VLED_EN", "CHRG_N", "VBAT_SENSE"]):
         y = 131.84 + 1.27 * k

@@ -1,8 +1,9 @@
 """Fabrication outputs for JLCPCB from out/menorah_final.kicad_pcb -> out/fab/
 
     gerbers + drill (zipped), bom_jlc.csv, cpl_jlc.csv
-All parts are on the BACK of the board.  JLCPCB's placement preview must still be checked by eye
-(rotation conventions differ per package), especially D101..D147, U1, J1, J2, MK1.
+All parts are on the BACK of the board.  Rotations in the CPL use JLCPCB's bottom-side convention
+(180 - KiCad angle).  JLCPCB's placement preview must still be checked by eye, because each library part
+has its own zero orientation: especially D101..D147, U1, J1, J2, MK1 and the SOT-23s.
 """
 import collections, csv, os, shutil, subprocess, sys, zipfile
 import netlist as N
@@ -23,7 +24,7 @@ def run(cmd):
 def main():
     shutil.rmtree(FAB, ignore_errors=True)
     os.makedirs(GER)
-    run(["kicad-cli", "pcb", "export", "gerbers", "-o", GER + "/", "--layers", LAYERS, "--subtract-soldermask", PCB])
+    run(["kicad-cli", "pcb", "export", "gerbers", "-o", GER + "/", "--layers", LAYERS, PCB])
     run(["kicad-cli", "pcb", "export", "drill", "-o", GER + "/", "--format", "excellon", "--excellon-units", "mm",
          "--excellon-separate-th", "--generate-map", "--map-format", "gerberx2", PCB])
     for f in os.listdir(GER):
@@ -56,7 +57,9 @@ def main():
         n = 0
         for r in rows:
             if r["Ref"] in bom_refs:
-                w.writerow([r["Ref"], r["PosX"] + "mm", r["PosY"] + "mm", "Bottom", r["Rot"]])
+                # JLCPCB measures bottom-side rotation mirrored: (180 - KiCad angle), as kicad-jlcpcb-tools does
+                rot = (180.0 - float(r["Rot"])) % 360.0
+                w.writerow([r["Ref"], r["PosX"] + "mm", r["PosY"] + "mm", "Bottom", "%.1f" % rot])
                 n += 1
     os.remove(pos)
     assert n == len(bom_refs), (n, len(bom_refs))

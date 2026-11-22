@@ -44,7 +44,7 @@ C0603 = ("Capacitor_SMD", "C_0603_1608Metric")
 C0805 = ("Capacitor_SMD", "C_0805_2012Metric")
 SOT23 = ("Package_TO_SOT_SMD", "SOT-23")
 C100N, C1U, C10U, C22U = "C14663", "C15849", "C15850", "C45783"
-R10K, R100K, R5K1, R3K3, R100R = "C25804", "C25803", "C23186", "C22978", "C22775"
+R10K, R100K, R5K1, R3K3, R100R, R2K2 = "C25804", "C25803", "C23186", "C22978", "C22775", "C4190"
 
 # ---------------------------------------------------------------- MCU
 u1 = {}
@@ -55,8 +55,8 @@ P("U1", "RF_Module", "ESP32-S3-WROOM-1", "ESP32-S3-WROOM-1-N8R8", "C2913201", *G
 P("C1", *C0603, "100n", C100N, 80.6, 125.85, 90, {"1": "+3V3", "2": "GND"})
 P("R1", *R0603, "10k", R10K, 81.3, 128.1, 0, {"1": "+3V3", "2": "EN"})
 P("C2", *C0603, "1u", C1U, 83.4, 129.6, 180, {"1": "EN", "2": "GND"})
-P("SW1", "Button_Switch_SMD", "SW_Push_1P1T_XKB_TS-1187A", "BOOT", "C318884", 150.5, 146.4, 0, {"1": "BOOT", "2": "GND"})
-P("SW2", "Button_Switch_SMD", "SW_Push_1P1T_XKB_TS-1187A", "RESET", "C318884", 150.5, 140.2, 0, {"1": "EN", "2": "GND"})
+P("SW1", "Button_Switch_SMD", "SW_Push_1P1T_XKB_TS-1187A", "TS-1187A", "C318884", 150.5, 146.4, 0, {"1": "BOOT", "2": "GND"})
+P("SW2", "Button_Switch_SMD", "SW_Push_1P1T_XKB_TS-1187A", "TS-1187A", "C318884", 150.5, 140.2, 0, {"1": "EN", "2": "GND"})
 
 # ---------------------------------------------------------------- USB-C
 usb = {"A1": "GND", "A12": "GND", "B1": "GND", "B12": "GND", "S1": "GND",
@@ -79,7 +79,7 @@ P("R4", *R0603, "3k3", R3K3, 87.0, 136.3, 90, {"1": "PROG", "2": "GND"})        
 P("C4", *C0603, "1u", C1U, 89.3, 134.0, 0, {"1": "VBUS", "2": "GND"})
 P("C5", *C0805, "10u", C10U, 93.7, 134.3, 0, {"1": "VBAT", "2": "GND"})
 P("Q1", *SOT23, "AO3401A", "C15127", 96.0, 137.0, 0, {"1": "VBUS", "2": "VSYS", "3": "VBAT"})  # G,S,D
-P("R5", *R0603, "10k", R10K, 96.9, 134.0, 0, {"1": "VBUS", "2": "GND"})   # gate pulldown; low enough to beat D1 leakage
+P("R5", *R0603, "2k2", R2K2, 96.9, 134.0, 0, {"1": "VBUS", "2": "GND"})   # gate pulldown; discharges C3+C4 in ~25 ms on unplug
 P("J2", "Connector_JST", "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal", "LiPo", "C295747", 149.7, 129.0, 90,
   {"1": "VBAT", "2": "GND", "MP": "GND"})
 P("U3", "Package_TO_SOT_SMD", "SOT-23-5", "AP2112K-3.3", "C51118", 85.6, 132.2, 0,
@@ -93,7 +93,7 @@ P("C8", *C0603, "100n", C100N, 96.9, 142.6, 0, {"1": "VBAT_SENSE", "2": "GND"})
 # LED rail switch: VSYS --Q2 (P-FET)--> VLED, driven by Q3 from VLED_EN (default off)
 P("Q2", *SOT23, "AO3401A", "C15127", 102.9625, 120.5, 180, {"1": "Q2_G", "2": "VSYS", "3": "VLED"})
 P("R8", *R0603, "100k", R100K, 100.3, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})
-P("C9", *C0603, "100n", C100N, 98.8, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})                     # soft start
+P("C9", *C0603, "1u", C1U, 98.8, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})                         # soft start (10 ms)
 P("Q3", *SOT23, "2N7002", "C8545", 101.5, 124.6, 0, {"1": "VLED_EN", "2": "GND", "3": "Q3_D"})
 P("R9", *R0603, "10k", R10K, 98.7, 123.9, 270, {"1": "Q2_G", "2": "Q3_D"})
 P("R10", *R0603, "100k", R100K, 102.9, 127.3, 0, {"1": "VLED_EN", "2": "GND"})

@@ -1,7 +1,8 @@
 """Two small bare boards that go with the menorah (separate JLCPCB orders, no assembly):
 
-  foot  80 x 25 mm, 1.6 mm: slot 1.75 x 10 mm from the top edge; two of them half-lap into the
-        15.5 mm slots in the menorah base so the bottoms sit flush (15.5 + 10 = 25.5).
+  foot  80 x 18 mm, 1.6 mm: slot 1.75 x 2.5 mm from the top edge; two of them half-lap into the
+        15.5 mm slots in the menorah base so the bottoms sit flush (15.5 + 2.5 = 18).  The foot must
+        not reach above y = 134 on the board: J2 (right) and C3/U5 (left) sit just above the slots.
   wand  candle-shaped "shamash" stick with a 5.1 mm hole for a glued 5 x 2 mm disc magnet.
 
     /usr/bin/python3.12 extras.py     -> out/extras/{foot,wand}.kicad_pcb + gerber zips
@@ -59,11 +60,11 @@ def make(name, shape, holes=(), label=None):
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
-    # ---- foot: 80 x 25, slot from the top in the middle
-    w, h, sw, sd = 80.0, 25.0, G.FOOT_SLOT_W, 10.0
+    # ---- foot: 80 x 18, slot from the top in the middle
+    w, h, sw, sd = 80.0, 18.0, G.FOOT_SLOT_W, 2.5
     body = box(0, 0, w, h).buffer(-3).buffer(3, 16)
     slot = unary_union([box(w / 2 - sw / 2, -1, w / 2 + sw / 2, sd), Point(w / 2, sd).buffer(sw / 2, 16)])
-    make("foot", body.difference(slot).simplify(0.01), label=("Menorah v1 foot", w / 2, 19.0))
+    make("foot", body.difference(slot).simplify(0.01), label=("Menorah v1 foot", w / 2, 12.0))
     # ---- wand: 10 mm wide stick with a flame-shaped tip; magnet hole near the tip
     drop, neck, (cx, cy) = G.flame(5.0, 22.0)
     stick = box(0, 22.0, 10.0, 95.0).buffer(-2).buffer(2, 16)
