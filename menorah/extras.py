@@ -1,7 +1,9 @@
 """Two small bare boards that go with the menorah (separate JLCPCB orders, no assembly):
 
-  foot  80 x 18 mm, 1.6 mm: slot 1.75 x 2.5 mm from the top edge; two of them half-lap into the
-        15.5 mm slots in the menorah base so the bottoms sit flush (15.5 + 2.5 = 18).  The foot must
+  foot  80 x 18 mm, 1.6 mm: slot 1.75 x 1.5 mm from the top edge; two of them half-lap into the
+        15.5 mm slots in the menorah base.  Both slots end in a semicircle, so each board slides about
+        0.35 mm past the nominal depth; with a 1.5 mm slot the feet end up about 0.3 mm below the base
+        edge, so the menorah stands on its feet and not on the board.  The foot must
         not reach above y = 134 on the board: J2 (right) and C3/U5 (left) sit just above the slots.
   wand  candle-shaped "shamash" stick with a 5.1 mm hole for a glued 5 x 2 mm disc magnet.
 
@@ -61,7 +63,7 @@ def main():
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
     # ---- foot: 80 x 18, slot from the top in the middle
-    w, h, sw, sd = 80.0, 18.0, G.FOOT_SLOT_W, 2.5
+    w, h, sw, sd = 80.0, 18.0, G.FOOT_SLOT_W, 1.5
     body = box(0, 0, w, h).buffer(-3).buffer(3, 16)
     slot = unary_union([box(w / 2 - sw / 2, -1, w / 2 + sw / 2, sd), Point(w / 2, sd).buffer(sw / 2, 16)])
     make("foot", body.difference(slot).simplify(0.01), label=("Menorah v1 foot", w / 2, 12.0))

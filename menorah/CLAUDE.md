@@ -64,8 +64,8 @@ VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 2k2 G->GND) --> VSYS 
 - **VLED is switched** so the LEDs (about 1 mA each idle) draw nothing in sleep. Default off.
 - **Level shifter U4 SN74LV1T34** (powered from VLED) between ESP32 3.3 V data and the first LED, plus R11 100 Ω series. U4/R11/C11 sit at the **left end of the crossbar under C1**, because the chain now starts at C1. Needed because on USB VLED is about 4.6–4.9 V and SK6812 VIH is about 0.7 x VDD.
 - On battery VLED is 3.0–4.2 V; SK6812MINI-E is specified from 3.7 V, so blue/white dim on a low battery. Accepted.
-- R5 is **2.2 k**: low enough that D1 leakage cannot hold Q1's gate high, and it discharges C3+C4 in about 25 ms when USB is unplugged (with 10 k the board ran through Q1's body diode for ~100 ms, a possible reset on a low battery).
-- C9 is **1 µF** (was 100 n): the LED rail ramps up over about 10 ms, which limits inrush into the 70 µF on VLED.
+- R5 is **2.2 k**: low enough that D1 leakage cannot hold Q1's gate high, and it discharges C3+C4 in about 25 ms when USB is unplugged (with 10 k the board ran through Q1's body diode for ~100 ms). A ~20 ms window remains, so a reset on unplug is still possible below about 3.5 V battery. Costs 2.3 mA on USB.
+- C9 is **1 µF** (was 100 n): by hand calculation the LED rail comes up after a 2–3 ms delay with about 0.9 A peak inrush (was 2–3 A). Side effect: turn-off takes 150–200 ms, so firmware should blank the LEDs before dropping VLED_EN.
 - R4 = 3.3 k sets charge current to roughly 250–400 mA (TP4057 clones disagree on the formula; all are safe for cells of 500 mAh and up).
 - VBAT sense: R6/R7 100 k/100 k + C8 100 n into ADC (IO8).
 - TP4057 CHRG (open drain) goes to IO18; use the internal pull-up. STDBY unconnected.
@@ -137,7 +137,8 @@ Refs D101..D147 follow chain order. `geometry.chain_order()` is authoritative.
 - **Independent review** (`REVIEW.md`, 2026-11-22): pin maps checked against fetched datasheets and found correct;
   its findings F1 (LED polarity mark), F2 (CPL rotation convention), F3 (foot height), F5, F6, F9 and part of F7 were
   fixed afterwards, F4 (mic stock) by switching to the ICS-43432, the rest are notes. The mic change itself was made
-  after that review and has not been reviewed independently yet.
+  after that review; the second review (`REVIEW2.md`) checked the new footprint, orientation and wiring against the
+  datasheet and against JLCPCB's own footprint and found them correct.
 - (Superseded) Earlier note: JLCPCB stock was NOT confirmed for any part (the part pages did not expose stock). Only the ESP32 N8R8 showed "In Stock: 9884" in a search snippet of unknown date. Passive and discrete LCSC numbers are from memory. **Confirm every line in JLCPCB's BOM-matching screen.**
 - Re-checked in the Claude Code session: the LED footprint pad arrangement against marbastlib's `LED_6028R` plus its
   symbol (1 VDD, 2 DOUT, 3 DIN, 4 VSS there; ours renumbers 3/4 to the datasheet), and the IC pinouts in `netlist.py`
@@ -178,7 +179,7 @@ extras.py      out/extras/: foot board and magnet wand (bare boards) with Gerber
 render.py      kicad-cli SVG -> PNG:  render.py out/board.kicad_pcb name LAYERS x 2400 [x0 y0 x1 y1 crop]
 menorah.pretty/SK6812MINI-E_Rev.kicad_mod   reverse-mount LED footprint (KiCad 7 syntax)
 menorah.pretty/ICS-43432.kicad_mod          microphone footprint, drawn from the datasheet
-REVIEW.md      independent pre-order review and what was done about it
+REVIEW.md, REVIEW2.md   two independent pre-order reviews, each with a header saying what was done about it
 ```
 
 Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route.py takes about 2 minutes; use
@@ -226,15 +227,19 @@ Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route
    **bottom side**, `bom_jlc.csv`, `cpl_jlc.csv`. Confirm stock per BOM line; swap or drop anything missing
    (the mic is optional: the board works without it).
 3. **Check JLCPCB's placement preview part by part.** The CPL rotations use JLCPCB's bottom-side convention
-   (180° − KiCad angle, as kicad-jlcpcb-tools does), but each library part has its own zero, so polarised parts can
-   still be off (especially D101..D147, U1, J1, J2, MK1, the SOT-23s). Tick "Confirm parts placement".
+   (180° − KiCad angle) plus a per-part offset fitted to the footprints JLCPCB/LCSC publish for the exact parts
+   (`ROT_FIX` in `fab.py`, from REVIEW2.md N1); U1 and J1 are listed at their pad-pattern centre. That is evidence, not
+   proof: the preview is the proof. Check every SOT-23/-5/-6 (U2–U5, U11–U19, Q1–Q3), MK1 (long axis vertical, port
+   ring on the ring), U1 (antenna at the top edge of the base), J1 (mouth at the left board edge), J2 (mouth towards
+   the battery area) and the LEDs. Tick "Confirm parts placement".
    **LEDs: the chamfered lead is GND. On the board GND is the upper-left pad seen from the front = upper-right seen
    from the back, marked by the silk dot; VDD is diagonally opposite.** Do not go by pin numbers: the current OPSCO
    datasheet numbers the pins differently (1 = GND) from the one this footprint was drawn from (1 = VDD).
    Put that sentence in the order remark.
 4. Ask JLCPCB to add edge rails/fiducials for the irregular outline. Order with DHL Express DDP by Tue 2026-11-24.
 5. Optional second/third bare-board orders: `out/extras/foot-gerbers.zip` (5 pcs, use 2) and `wand-gerbers.zip`.
-   The foot is **80 x 18 mm with a 2.5 mm slot** (not 25 / 10): a taller foot would hit J2 on the right and C3 on the left.
+   The foot is **80 x 18 mm with a 1.5 mm slot** (not 25 / 10): a taller foot would hit J2 on the right and C3 on the left,
+   and the shallow slot leaves the feet about 0.3 mm proud of the base so the menorah stands on them.
 6. **Firmware** (ESP-IDF or Arduino): LED driver on IO6 with a brightness cap, VLED_EN sequencing (hold LED data low
    while VLED is off), hall scan + wake, flame flicker and burn-down, Hebrew calendar + sunset, NTP, Wi-Fi
    provisioning, OTA, I2S blow detection, battery/charge readout. Use the pin map in section 4.
@@ -245,7 +250,8 @@ Known weak points to keep in mind:
 - Nothing here has been checked by a second person or against opened datasheets in this session (section 5).
 - Single 0.3 mm vias carry VBAT (battery path, 0.5 mm track, about 73 mm long) — fine for 1 A, not generous.
 - A few signals take long routes in the base (EN 134 mm, BOOT 117 mm, MIC_WS 114 mm); fine at these speeds, not tidy.
-- The JST connector mouth faces the battery area; the seated foot board stops 1 mm below J2's lower pad.
+- The JST connector mouth faces the battery area; the seated foot board stops about 1 mm below J2's lower pad.
+- Second review (`REVIEW2.md`) items left as they are: the regulator's ground island joins the rest through one 0.5 mm track (N2); EN/BOOT and UART_RX/CC1 tracks pass 0.275 mm from the foot-slot ends (N4). Ask JLCPCB for panel tabs on the base and crossbar, not the flames.
 - Firmware notes from the review: two neighbouring halls can both read a magnet held between candles; cap LED current at about 1 A.
 
 ## 10. Things the user needs to buy or decide

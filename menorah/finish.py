@@ -249,16 +249,20 @@ def main():
             add_text(board, "+" if pad.GetNumber() == "1" else "-", 143.2, y + (0.5 if pad.GetNumber() == "1" else -0.5), 1.4, thick=0.25)
     for ref, label in (("SW1", "BOOT"), ("SW2", "RESET")):
         fp = board.FindFootprintByReference(ref)
-        add_text(board, label, ToMM(fp.GetPosition().x), ToMM(fp.GetPosition().y) + 0.2, 0.8)
+        # beside the switch, not under its body: RESET above SW2, BOOT below SW1
+        add_text(board, label, ToMM(fp.GetPosition().x), ToMM(fp.GetPosition().y) + (3.75 if ref == "SW1" else -3.65), 1.0)
         fp.Reference().SetVisible(False)
-    for ref in ("U2", "Q1", "Q2", "Q3", "MK1"):  # reference texts that sat on top of neighbouring silk
+    for ref in ("U2", "Q1", "Q2", "Q3", "MK1", "J2"):  # reference texts that sat on top of neighbouring silk
         board.FindFootprintByReference(ref).Reference().SetVisible(False)
     # test pads: label with the signal name instead of TPn
     for fp in board.GetFootprints():
         if fp.GetReference().startswith("TP"):
             fp.Reference().SetVisible(False)
             x, y = ToMM(fp.GetPosition().x), ToMM(fp.GetPosition().y)
-            add_text(board, fp.GetValue(), x, y + (-1.9 if fp.GetReference() in ("TP2", "TP3") else 1.9), 0.6)
+            if fp.GetReference() in ("TP3", "TP4"):          # TX / RX: label to the left, between the pad and the foot slot
+                add_text(board, fp.GetValue(), x - 1.7, y, 0.6)
+            else:
+                add_text(board, fp.GetValue(), x, y + (-1.95 if fp.GetReference() == "TP2" else 1.95), 0.8)
         # footprint silk that hangs over the board edge (USB connector front, module antenna end) is dropped
         for g in list(fp.GraphicalItems()):
             if g.GetLayer() == pcbnew.B_SilkS and g.GetClass() == "MGRAPHIC":
