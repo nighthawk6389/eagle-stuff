@@ -93,7 +93,7 @@ P("C8", *C0603, "100n", C100N, 96.9, 142.6, 0, {"1": "VBAT_SENSE", "2": "GND"})
 # LED rail switch: VSYS --Q2 (P-FET)--> VLED, driven by Q3 from VLED_EN (default off)
 P("Q2", *SOT23, "AO3401A", "C15127", 102.9625, 120.5, 180, {"1": "Q2_G", "2": "VSYS", "3": "VLED"})
 P("R8", *R0603, "100k", R100K, 100.3, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})
-P("C9", *C0603, "1u", C1U, 98.8, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})                         # soft start (10 ms)
+P("C9", *C0603, "1u", C1U, 98.8, 120.5, 270, {"1": "VSYS", "2": "Q2_G"})                         # soft start: ~0.9 A peak inrush; turn-off takes 150-200 ms
 P("Q3", *SOT23, "2N7002", "C8545", 101.5, 124.6, 0, {"1": "VLED_EN", "2": "GND", "3": "Q3_D"})
 P("R9", *R0603, "10k", R10K, 98.7, 123.9, 270, {"1": "Q2_G", "2": "Q3_D"})
 P("R10", *R0603, "100k", R100K, 102.9, 127.3, 0, {"1": "VLED_EN", "2": "GND"})

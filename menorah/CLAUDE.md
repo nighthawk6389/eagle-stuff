@@ -73,7 +73,7 @@ VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 2k2 G->GND) --> VSYS 
 - EN: R1 10 k pull-up, C2 1 µF, SW2 to GND. BOOT: SW1 on IO0.
 - Mic **ICS-43432** (I2S, 4 x 3 mm, bottom port; replaces the out-of-stock ICS-43434): LR and CONFIG tied to GND (left channel), 100 n (C12) at VDD, R12 100 k pull-down on SD as the datasheet asks. Footprint `menorah.pretty/ICS-43432.kicad_mod` was drawn from datasheet DS-000038 figures 3, 15, 16, 17.
 - Hall sensors DRV5032FA: push-pull, omnipolar, output LOW when a magnet is present, 100 n each.
-- Each LED has a 100 n cap; 22 µF VLED bulk at Q2 and at both ends of the crossbar.
+- Each LED has a 100 n cap; 22 µF VLED bulk at Q2 (C10) and under the crossbar at x = 42 and 158 (C13, C14).
 - Firmware must cap LED brightness: 47 LEDs at full white is about 1.7 A.
 
 ## 4. Pinout (ESP32-S3-WROOM-1, module pad numbers in brackets) — `netlist.py` is authoritative
@@ -179,7 +179,7 @@ extras.py      out/extras/: foot board and magnet wand (bare boards) with Gerber
 render.py      kicad-cli SVG -> PNG:  render.py out/board.kicad_pcb name LAYERS x 2400 [x0 y0 x1 y1 crop]
 menorah.pretty/SK6812MINI-E_Rev.kicad_mod   reverse-mount LED footprint (KiCad 7 syntax)
 menorah.pretty/ICS-43432.kicad_mod          microphone footprint, drawn from the datasheet
-REVIEW.md, REVIEW2.md   two independent pre-order reviews, each with a header saying what was done about it
+REVIEW.md, REVIEW2.md, REVIEW3.md   three independent pre-order reviews, each with a header saying what was done about it
 ```
 
 Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route.py takes about 2 minutes; use
@@ -236,8 +236,30 @@ Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route
    from the back, marked by the silk dot; VDD is diagonally opposite.** Do not go by pin numbers: the current OPSCO
    datasheet numbers the pins differently (1 = GND) from the one this footprint was drawn from (1 = VDD).
    Put that sentence in the order remark.
-4. Ask JLCPCB to add edge rails/fiducials for the irregular outline. Order with DHL Express DDP by Tue 2026-11-24.
+
+   Four part types fit their pads either way round, so the preview only helps if you know where pin 1 belongs.
+   Seen from the BACK (the side the parts are on):
+
+   | Part | Correct orientation | Landmark |
+   |---|---|---|
+   | D101–D147 | GND / chamfered lead at the upper-right pad | on the silk dot |
+   | D1 (SS34) | cathode bar on the left | the end nearest C7 and the stem |
+   | U2 (TP4057) | pin 1 upper-left | the corner nearest C5 |
+   | U5 (USBLC6) | pin 1 lower-left | the row facing R3, at the end nearest the module |
+
+   **Order settings** (as walked through on JLCPCB's site on 2026-11-22): PCB — Black, ENIG, via covering Tented,
+   1.6 mm, 1 oz, Remove Mark. PCB Assembly — Standard, bottom side, edge rails added by JLCPCB, Confirm Parts
+   Placement Yes, **Bake Components Yes** (the LEDs are MSL 5a and JLCPCB will not accept complaints about LED
+   failures if baking was skipped), Depanel boards & edge rail Yes, Board Cleaning No (open-port microphone),
+   assembly remark with the LED sentence. On the BOM page the LED and the microphone come up unticked with a yellow
+   "difficult to process" notice: tick them. JLCPCB reviews such orders and emails; answer the same day.
+4. Ask JLCPCB to add edge rails/fiducials for the irregular outline, with tabs on the bottom edge of the base and the
+   lower edge of the crossbar only — none on flames, necks, candle tops or beside J1 (the hall-sensor capacitors sit at
+   the root of each flame neck and can crack if a flame is flexed). Order as early as possible: JLCPCB quotes Standard
+   PCBA at 4 days or more on top of board fabrication and shipping, so a Tuesday order makes Fri 2026-12-04 uncertain.
 5. Optional second/third bare-board orders: `out/extras/foot-gerbers.zip` (5 pcs, use 2) and `wand-gerbers.zip`.
+   The wand has plain copper under black mask and a silk ring round the magnet hole; the feet have no copper on purpose
+   (the left one stands next to the antenna), so JLCPCB may ask about a copper-less board.
    The foot is **80 x 18 mm with a 1.5 mm slot** (not 25 / 10): a taller foot would hit J2 on the right and C3 on the left,
    and the shallow slot leaves the feet about 0.3 mm proud of the base so the menorah stands on them.
 6. **Firmware** (ESP-IDF or Arduino): LED driver on IO6 with a brightness cap, VLED_EN sequencing (hold LED data low
@@ -252,11 +274,24 @@ Known weak points to keep in mind:
 - A few signals take long routes in the base (EN 134 mm, BOOT 117 mm, MIC_WS 114 mm); fine at these speeds, not tidy.
 - The JST connector mouth faces the battery area; the seated foot board stops about 1 mm below J2's lower pad.
 - Second review (`REVIEW2.md`) items left as they are: the regulator's ground island joins the rest through one 0.5 mm track (N2); EN/BOOT and UART_RX/CC1 tracks pass 0.275 mm from the foot-slot ends (N4). Ask JLCPCB for panel tabs on the base and crossbar, not the flames.
-- Firmware notes from the review: two neighbouring halls can both read a magnet held between candles; cap LED current at about 1 A.
+- Firmware notes from the reviews: two neighbouring halls can both read a magnet held between candles; cap LED current
+  at about 1 A and assume a 500 mA USB source (CC is not readable); drive IO6 low before raising VLED_EN and blank the
+  LEDs before dropping it; hold MIC_SCK and MIC_WS low before deep sleep; there is no 32 kHz crystal (IO15/16 carry the
+  mic), so re-sync NTP after a wake before deciding the night; mask a hall pin that is stuck low before sleeping; latch
+  the first hall edge for about 0.5 s (the field reverses 5 mm off-axis, so a wand sliding across a ring reads on-off-on).
+  First flash of a blank module: hold BOOT, tap RESET.
+- **The wand only triggers when its flame is laid flat over the ring** (magnet face on the ring: about 119 mT by
+  calculation). Pointing the tip at the ring like a match gives about 1 mT, below the sensor threshold.
+- **Firmware cannot tell whether USB is plugged in**: CHRG_N is low only while charging, and VBUS reaches no GPIO.
+  If that matters, add a divider from VBUS to the IO47 or IO48 test pad after delivery (150 k on top, 220 k to GND).
+- The assembled menorah weighs only about 50 g: put putty or rubber bumpers under the feet, glue the half-lap joints,
+  use a thin USB cable. Handle the board by the base, not the flames.
+- All 47 LEDs are one data chain, so one dead LED darkens everything after it: keep about 10 spare SK6812MINI-E.
 
 ## 10. Things the user needs to buy or decide
 
-- Small neodymium disc magnets, 5 x 2 or 6 x 2 mm (bigger ones risk triggering the neighbouring candle, 22 mm away).
+- Small neodymium disc magnets, 5 x 2 mm (the wand's hole is 5.1 mm; bigger ones risk triggering the neighbouring candle, 22 mm away).
+- About 10 spare SK6812MINI-E LEDs and some museum putty or rubber bumpers for the feet.
 - Optional LiPo, single cell with protection, JST-PH, up to about 30 x 30 mm (around 500 mAh gives 2–3 hours of light).
 - Location for sunset calculation: Bergen County, NJ.
 
