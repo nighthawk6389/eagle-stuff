@@ -7,10 +7,14 @@ designed with Claude, assembled by JLCPCB, in hand for the first night of Hanukk
 
 - **Hanukkah 5787 starts at sundown Fri 2026-12-04.** First candle is lit before sundown (Shabbat); night 2 is lit after Shabbat ends.
 - JLCPCB build + DHL is roughly 7–10 days, so **the order has to go in by about Tue 2026-11-24 (Wed at the latest)**.
-- Status at handoff (Sat 2026-11-21 evening):
-  - DONE: concept, outline geometry, part selection, netlist-as-code, footprint for the reverse-mount LED, unrouted board with all 157 footprints placed and nets assigned, keep-outs, project rules/net classes.
-  - NOT DONE: placement fixes (section 9), routing, copper pours, front artwork (gold flames, rings, border, Hebrew lettering), DRC, Gerbers/BOM/CPL, foot board, shamash wand, firmware.
-  - There is **no `.kicad_sch`**. The schematic exists only as `netlist.py`. Nothing has been routed or DRC-checked beyond a placement-only run.
+- Status after the Claude Code session (Sun 2026-11-22):
+  - DONE: placement, **full routing**, GND pours on both layers, front gold artwork (flames, hall rings, mic ring,
+    border, Hebrew lettering), back silk labels, **DRC with 0 errors / 0 unconnected** (`out/drc_final.rpt`; the only
+    remaining entries are 157 harmless "footprint has no library link" warnings), Gerbers + drill, JLCPCB BOM and CPL,
+    foot board and wand outlines with Gerbers.
+  - NOT DONE: JLCPCB upload / stock check / placement-preview check (needs a human), firmware.
+  - There is still **no `.kicad_sch`**. The schematic exists only as `netlist.py`; the board is generated from code.
+  - Things that changed from the handoff design are listed in section 8a. **The pin map changed** (section 4).
 
 ## 1. What it is (architecture goals)
 
@@ -41,7 +45,9 @@ designed with Claude, assembled by JLCPCB, in hand for the first night of Hanukk
 | Mic port | (100, 96) |
 | Hebrew lettering block | x 62–138, y 139.5–149.5: "נס גדול היה שם" |
 | USB-C | **left edge of the base** (front view), plug enters sideways at y = 131 |
-| Battery area (back) | x 108–144, y 120–151; JST plug needs ~6 mm of that, so label says max 32 x 30 mm |
+| Battery area (back) | x 108–144, y 120–151 (no parts; tracks only). Usable for a cell up to about **30 x 30 mm** |
+| Battery connector J2 | **right end of the base** at (149.7, 129), mouth facing the battery area; + is the lower pin (silk "+" / "-") |
+| Buttons (back) | right end of the base: RESET (150.5, 140.2), BOOT (150.5, 146.4) |
 
 Night N lights the N right-most candles as seen from the front (C(9-N)..C8).
 
@@ -56,12 +62,12 @@ VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 10k G->GND) --> VSYS 
 ```
 
 - **VLED is switched** so the LEDs (about 1 mA each idle) draw nothing in sleep. Default off.
-- **Level shifter U4 SN74LV1T34** (powered from VLED) between ESP32 3.3 V data and the first LED, plus R11 100 Ω series. Needed because on USB VLED is about 4.6–4.9 V and SK6812 VIH is about 0.7 x VDD.
+- **Level shifter U4 SN74LV1T34** (powered from VLED) between ESP32 3.3 V data and the first LED, plus R11 100 Ω series. U4/R11/C11 sit at the **left end of the crossbar under C1**, because the chain now starts at C1. Needed because on USB VLED is about 4.6–4.9 V and SK6812 VIH is about 0.7 x VDD.
 - On battery VLED is 3.0–4.2 V; SK6812MINI-E is specified from 3.7 V, so blue/white dim on a low battery. Accepted.
 - R5 is 10 k (not 100 k) so D1 reverse leakage cannot hold Q1's gate high.
 - R4 = 3.3 k sets charge current to roughly 250–400 mA (TP4057 clones disagree on the formula; all are safe for cells of 500 mAh and up).
-- VBAT sense: R6/R7 100 k/100 k + C8 100 n into ADC (IO9).
-- TP4057 CHRG (open drain) goes to IO10; use the internal pull-up. STDBY unconnected.
+- VBAT sense: R6/R7 100 k/100 k + C8 100 n into ADC (IO8).
+- TP4057 CHRG (open drain) goes to IO18; use the internal pull-up. STDBY unconnected.
 - USB: CC1/CC2 5.1 k to GND, USBLC6-2SC6 ESD on D+/D-, D+ = IO20, D- = IO19.
 - EN: R1 10 k pull-up, C2 1 µF, SW2 to GND. BOOT: SW1 on IO0.
 - Mic ICS-43434 (I2S): LR tied to GND (left channel).
@@ -69,27 +75,33 @@ VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 10k G->GND) --> VSYS 
 - Each LED has a 100 n cap; 22 µF VLED bulk at Q2 and at both ends of the crossbar.
 - Firmware must cap LED brightness: 47 LEDs at full white is about 1.7 A.
 
-## 4. Pinout (ESP32-S3-WROOM-1, module pad numbers in brackets)
+## 4. Pinout (ESP32-S3-WROOM-1, module pad numbers in brackets) — `netlist.py` is authoritative
+
+The pin map was re-done during routing so that every bundle reaches the module without crossings.
 
 | Signal | GPIO | Notes |
 |---|---|---|
-| HALL_SH | IO4 [4] | RTC-capable, wake source |
-| HALL_C8 / C7 / C6 / C5 | IO5 [5] / IO6 [6] / IO7 [7] / IO15 [8] | |
-| HALL_C4 / C3 / C2 / C1 | IO16 [9] / IO17 [10] / IO18 [11] / IO8 [12] | all halls are RTC GPIOs |
+| HALL_C1 / C2 | IO4 [4] / IO5 [5] | |
+| LED_DATA | IO6 [6] | to U4 (under C1), then the LED chain |
+| MIC_SCK / MIC_WS / MIC_SD | IO7 [7] / IO15 [8] / IO16 [9] | I2S |
+| VLED_EN | IO17 [10] | high = LEDs powered |
+| CHRG_N | IO18 [11] | input, pull-up |
+| VBAT_SENSE | IO8 [12] | ADC1_CH7 |
 | USB D- / D+ | IO19 [13] / IO20 [14] | native USB |
-| VBAT_SENSE | IO9 [17] | ADC1 |
-| CHRG_N | IO10 [18] | input, pull-up |
-| VLED_EN | IO11 [19] | high = LEDs powered |
-| MIC_SD / MIC_WS / MIC_SCK | IO12 [20] / IO13 [21] / IO14 [22] | I2S |
-| LED_DATA | IO21 [23] | to U4, then LED chain |
-| Spare (test pads) | IO47 [24], IO48 [25] | TP5, TP6 |
+| HALL_SH | IO9 [17] | wake source |
+| HALL_C5 / C6 / C7 / C8 | IO10 [18] / IO11 [19] / IO12 [20] / IO13 [21] | |
+| HALL_C3 / C4 | IO14 [22] / IO21 [23] | all nine halls are RTC GPIOs (0–21), any can wake the board |
+| Spare (test pads) | IO47 [24], IO48 [25] | TP5, TP6 (below the module) |
 | BOOT | IO0 [27] | SW1 |
-| UART RX / TX | RXD0 [36] / TXD0 [37] | TP4, TP3 |
+| UART RX / TX | RXD0 [36] / TXD0 [37] | TP4, TP3 (left of the module) |
 | Unused, leave alone | IO3, IO45, IO46 (strapping), IO35–37 (PSRAM on R8 modules) | |
 
-Test pads (back): TP1 GND, TP2 3V3, TP3 TX, TP4 RX, TP5 IO47, TP6 IO48.
+Test pads (back, labelled by signal name): GND, 3V3 (power section), TX, RX (left of the module), IO47, IO48 (below it).
 
-**LED chain order** (index 0 first): SH, C5, C6, C7, C8, C4, C3, C2, C1. Inside each candle: body LEDs bottom to top, flame LED last. SH has 7 LEDs, others 5. Refs D101..D147 follow chain order. `geometry.chain_order()` is authoritative.
+**LED chain order** (index 0 first): **C1, C2, C3, C4, SH, C5, C6, C7, C8** — plain left to right as seen from the
+front. Inside each candle: body LEDs bottom to top, flame LED last. SH has 7 LEDs, others 5, so the indices are
+C1 0–4, C2 5–9, C3 10–14, C4 15–19, SH 20–26, C5 27–31, C6 32–36, C7 37–41, C8 42–46.
+Refs D101..D147 follow chain order. `geometry.chain_order()` is authoritative.
 
 ## 5. BOM (LCSC / JLCPCB part numbers)
 
@@ -119,6 +131,11 @@ Test pads (back): TP1 GND, TP2 3V3, TP3 TX, TP4 RX, TP5 IO47, TP6 IO48.
 - Pinouts checked against datasheets/KiCad symbols: DRV5032, TP4057, SN74LV1T34, ESP32 module, ICS-43434, SK6812MINI-E (pin names).
 - LED footprint: geometry copied from `ebastler/marbastlib` `LED_6028R`, cross-checked against Keebio's `SK6812-MINI-E` (same pad arrangement after a 180° turn). Pads renumbered to the datasheet (1 VDD, 2 DOUT, 3 GND, 4 DIN).
 - **JLCPCB stock was NOT confirmed for any part** (the part pages did not expose stock). Only the ESP32 N8R8 showed "In Stock: 9884" in a search snippet of unknown date. Passive and discrete LCSC numbers are from memory. **Confirm every line in JLCPCB's BOM-matching screen.**
+- Re-checked in the Claude Code session: the LED footprint pad arrangement against marbastlib's `LED_6028R` plus its
+  symbol (1 VDD, 2 DOUT, 3 DIN, 4 VSS there; ours renumbers 3/4 to the datasheet), and the IC pinouts in `netlist.py`
+  against memory of the datasheets (DRV5032, TP4057, AP2112K, SN74LV1T34, USBLC6-2, AO3401A, 2N7002, ICS-43434,
+  ESP32-S3-WROOM-1). No datasheet PDFs were opened in that session, so this is a second look, not proof.
+- CC resistors: R2 is on CC2 (pad B5) and R3 on CC1 (pad A5) — swapped from the handoff so the two lines do not cross.
 - JST-PH battery polarity differs between vendors. The board is silk-labelled; the battery must be checked before plugging in.
 
 ## 6. Design rules
@@ -126,26 +143,46 @@ Test pads (back): TP1 GND, TP2 3V3, TP3 TX, TP4 RX, TP5 IO47, TP6 IO48.
 - 2-layer, 1.6 mm, black mask, ENIG. Min drill 0.3 mm (JLCPCB 2-layer limit), via 0.7/0.3.
 - Net classes (in `out/menorah.kicad_pro`): Default 0.2 mm track / 0.2 mm clearance; Power 0.5 mm for GND, +3V3, VBUS, VSYS, VBAT, VLED.
 - Copper-to-edge 0.25 mm, min clearance 0.15, min track 0.15.
-- Front copper: GND pour everywhere. **No tracks or vias on F.Cu** under flames + necks, hall rings (r 3.3), mic ring, lettering block (rule areas already in the board). Gold artwork = F.Mask openings over that GND pour.
-- Antenna: no copper on either layer in x 55–85, y 117–124.6, plus the keep-out built into the module footprint.
+- Front copper: GND pour everywhere. **No tracks or vias on F.Cu** under flames + necks, hall rings (r 3.3), mic ring,
+  lettering block (rule areas in the board). Gold artwork = F.Mask openings over that GND pour. The front carries only
+  short "hops" in the crossbar, two hall lines in the stem, and wiring in the base (641 mm of track in total).
+- Antenna: no copper on either layer in x 55–85, y 117–124.6, plus the keep-out built into the module footprint
+  (x 46–94, y 103–124). **Visible consequence:** the front has no copper (so no gold border, and bare laminate under the
+  mask) on the base's top-left edge and the left 6 mm of the stem between y 103 and 124.
 - The module footprint's 0.2 mm thermal vias are deleted (below drill minimum).
+- All vias are 0.7/0.3 and tented. New vias are kept 2 mm from the board edge so the border line stays unbroken
+  (exception: two vias at the foot of C8, where the border has a short gap).
 - JLCPCB: reverse-mount LEDs and ESP32 modules are "Standard only", so this is **Standard PCBA, single-sided** (about $25.56 setup + $8.21 stencil), not Economic. Ask JLCPCB to add edge rails/fiducials for the irregular outline.
 
 ## 7. Files and toolchain
 
 ```
-geometry.py   outline, candle/LED/hall positions, chain order (single source of truth)
-netlist.py    every part: footprint, LCSC, position, rotation, pad->net map (this is the schematic)
-build.py      builds out/menorah.kicad_pcb + .kicad_pro (outline, footprints, nets, keep-outs)
-render.py     kicad-cli SVG export -> PNG:  python3 render.py out/menorah.kicad_pcb name LAYERS x 2000
+geometry.py    outline, candle/LED/hall positions, chain order (single source of truth)
+netlist.py     every part: footprint, LCSC, position, rotation, pad->net map (this is the schematic)
+build.py       out/menorah.kicad_pcb + .kicad_pro: outline, footprints, nets, keep-outs (unrouted)
+route_plan.py  hand-planned routing of candles, crossbar, stem and the main buses in the base (coordinates in code)
+maze.py        small grid router (Dijkstra on a 0.05 mm grid) for the remaining ~60 connections in the base + GND vias
+route.py       route_plan + maze -> out/menorah_routed.kicad_pcb   (--reuse re-applies out/maze_result.json, --plan-only skips maze)
+finish.py      GND pours, front artwork, silk labels -> out/menorah_final.kicad_pcb   <- THE BOARD
+drc.py         DRC in a fresh process:  drc.py out/menorah_final.kicad_pcb out/drc_final.rpt
+fab.py         out/fab/: Gerbers + drill (zip), bom_jlc.csv, cpl_jlc.csv
+extras.py      out/extras/: foot board and magnet wand (bare boards) with Gerber zips
+render.py      kicad-cli SVG -> PNG:  render.py out/board.kicad_pcb name LAYERS x 2400 [x0 y0 x1 y1 crop]
 menorah.pretty/SK6812MINI-E_Rev.kicad_mod   reverse-mount LED footprint (KiCad 7 syntax)
-out/          generated board, project, renders, DRC report
 ```
 
-- Built with **KiCad 7.0.11** Python (`pcbnew`), run as `/usr/bin/python3 build.py`. Footprint libraries expected at `/usr/share/kicad/footprints/` (constant `KL` in `netlist.py`).
-- KiCad 7 has no `kicad-cli pcb drc`; DRC is `pcbnew.WriteDRCReport(board, path, pcbnew.EDA_UNITS_MILLIMETRES, True)`. **If Claude Code has KiCad 8 or 9, expect small API changes** (footprint fields instead of `SetProperty`, `kicad-cli pcb drc` available) and re-check that the hand-written footprint loads.
+Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route.py takes about 2 minutes; use
+`route.py --reuse` if only finish.py changed).
+
+- **KiCad 7.0.11** from Ubuntu 24.04 (`apt install kicad kicad-footprints`), run with **`/usr/bin/python3.12`**
+  (the `pcbnew` module is built for 3.12; plain `python3` may be a different version). Also needs
+  `python3-shapely python3-scipy python3-skimage python3-cairosvg python3-fonttools` and the FreeSerif font
+  (`fonts-freefont-ttf`) for the lettering. Footprint libraries at `/usr/share/kicad/footprints/` (constant `KL`).
+- KiCad 7 has no `kicad-cli pcb drc`; DRC is `pcbnew.WriteDRCReport(...)` (see `drc.py`). With KiCad 8 or 9 expect
+  small API changes.
 - `LoadBoard` must run in a fresh process to pick up `.kicad_pro` rules (same-process reload returned defaults).
-- Planned router: Freerouting 2.1.0 (`java -jar freerouting-2.1.0.jar -de in.dsn -do out.ses`), via `pcbnew.ExportSpecctraDSN` / `ImportSpecctraSES`. **Not yet run.**
+- **Freerouting was not used.** The routing is the scripted plan plus `maze.py`. `maze.py` has no rip-up, so the
+  result depends on the net order in `maze.ORDER`; if a placement change makes a net fail, reorder or script that net.
 - All footprints are flipped to the back with `fp.Flip(pos, True)`; coordinates stay front-view.
 
 ## 8. Decisions made, and corrections to earlier statements
@@ -158,25 +195,47 @@ out/          generated board, project, renders, DRC report
 - Cost: earlier estimate of $150–200 for 2 assembled boards assumed Economic assembly. With Standard assembly and about 10 extended part types, expect it higher; **get the real number from the JLCPCB quote** (35% US tariff applies to the goods value).
 - No buzzer in v1 (no trusted footprint); spare GPIOs are on test pads instead.
 
+## 8a. Changes made while routing (Claude Code session, 2026-11-22)
+
+- **LED chain order is now left to right** (C1..C4, SH, C5..C8) and the level shifter moved under C1. Every
+  candle-to-candle data link is then a short run along the crossbar.
+- **LEDs are turned 180°** (DOUT on top) and each LED's capacitor sits in the gap below it; the data link passes
+  between the capacitor pads. A candle routes entirely on the back with no vias except GND stitching.
+- **Pin map changed** (section 4): halls C1/C2 on the module's east pads, the other seven on the south pads; LED data,
+  mic, VLED_EN, CHRG_N, VBAT_SENSE on east pads next to the power section.
+- **J2 (battery) and both buttons moved to the right end of the base**; the hall lines run down the east side of the
+  power section and along the strip below the module. Battery area is now about 30 x 30 mm.
+- VBUS crosses under the module on the **front** (0.8 mm, two vias at each end) just below the antenna keep-out.
+- LED-switch parts (Q2, Q3, R8–R10, C9, C10) sit at the foot of the stem, west of the VLED trunk.
+- USB D+/D- use four vias (short front hop over the module's west pad row, then under the module on the back).
+
 ## 9. Exact next steps
 
-1. **Fix placement errors from the placement-only DRC** (`out/drc0.rpt`): U3, C7, Q2 (y≈122) and C3 (50, 124.2) sit inside the ESP32 module's built-in antenna keep-out (it extends about 15 mm either side of the module above y≈124.5). Move the top row of the power section (U3, C6, C7, Q2, Q3, C10 and their passives) down by about 4 mm and move C3 below y = 126. Re-run `build.py` until `courtyards_overlap` and `items_not_allowed` are zero. (`lib_footprint_issues` and `unconnected_items` are expected at this stage.)
-2. Add silk "+" at J2 pad 1 and "−" at pad 2; add "BOOT"/"RESET" labels.
-3. **Route**: export DSN, run Freerouting on all nets including GND, import SES. Check that no F.Cu track crosses the rule areas and that Power nets came out 0.5 mm.
-4. **Pours**: GND zone on F.Cu and B.Cu, fill, confirm zero unconnected items.
-5. **Front artwork** (F.Mask openings over the F.Cu GND pour): flame teardrops; ring (r≈3, 0.6 wide) at each hall position; ring at the mic hole; 0.5 mm border line 0.6 mm inside the outline (skip any segment within 0.45 mm of non-GND F.Cu copper); Hebrew lettering as polygons from a font with Hebrew glyphs (Cardo, FreeSerif or DejaVu Sans are installed here), laid out right to left.
-6. **Full DRC** to zero errors; render front and back and look at them.
-7. **Independent review before ordering**: re-check every IC pinout in `netlist.py` against its datasheet, the LED footprint orientation against the OPSCO datasheet drawing, USB connector edge overhang (0.45 mm), and JST opening direction (should face +x toward the battery area).
-8. **Fab outputs**: Gerbers + drill, JLCPCB BOM CSV (Comment, Designator, Footprint, LCSC), CPL CSV (back side; check rotations in JLCPCB's placement preview, especially the 47 LEDs, U1, J1, MK1).
-9. **Foot board** (separate bare-PCB order, 5 pcs, use 2): about 80 x 25 mm, 1.6 mm, slot 1.75 wide x 10 deep from the top so the half-lap sits flush. **Wand** (optional third bare design): small candle-shaped PCB with a 5 mm hole for a glued 5 x 2 mm magnet.
-10. Upload to JLCPCB, confirm stock per line, swap or drop anything missing (the mic is optional: the board works without it), order with DHL Express DDP.
-11. Push the project to a GitHub repo under `nighthawk6389` (user asked for GitHub integration; no repo exists yet).
-12. **Firmware** (ESP-IDF or Arduino, after ordering): LED driver on IO21 with brightness cap, VLED_EN sequencing, hall scan + wake, flame flicker and burn-down, Hebrew calendar + sunset, NTP, Wi-Fi provisioning, OTA updates, I2S blow detection, battery/charge readout.
+1. **Look at `out/front.png` and `out/back.png`**, and open `out/menorah_final.kicad_pcb` in KiCad if available.
+2. **Upload to JLCPCB**: `out/fab/menorah-v1-gerbers.zip`, 2 layers, 1.6 mm, black mask, ENIG, then PCBA: Standard,
+   **bottom side**, `bom_jlc.csv`, `cpl_jlc.csv`. Confirm stock per BOM line; swap or drop anything missing
+   (the mic is optional: the board works without it).
+3. **Check JLCPCB's placement preview part by part.** The CPL is KiCad's own position file with JLC's column names;
+   bottom-side rotations often need correcting in the preview (especially D101..D147, U1, J1, J2, MK1, SOT-23s).
+   For the LEDs: pad 1 (VDD) is at the lower right and DIN at the lower left **as seen from the front**.
+4. Ask JLCPCB to add edge rails/fiducials for the irregular outline. Order with DHL Express DDP by Tue 2026-11-24.
+5. Optional second/third bare-board orders: `out/extras/foot-gerbers.zip` (5 pcs, use 2) and `wand-gerbers.zip`.
+6. **Firmware** (ESP-IDF or Arduino): LED driver on IO6 with a brightness cap, VLED_EN sequencing (hold LED data low
+   while VLED is off), hall scan + wake, flame flicker and burn-down, Hebrew calendar + sunset, NTP, Wi-Fi
+   provisioning, OTA, I2S blow detection, battery/charge readout. Use the pin map in section 4.
+7. The project lives in `nighthawk6389/eagle-stuff` under `menorah/` (branch `claude/new-session-al2mk2`); move it to
+   its own repository if wanted.
+
+Known weak points to keep in mind:
+- Nothing here has been checked by a second person or against opened datasheets in this session (section 5).
+- Single 0.3 mm vias carry VBAT (battery path, 0.5 mm track, about 73 mm long) — fine for 1 A, not generous.
+- A few signals take long routes in the base (EN 134 mm, BOOT 117 mm, MIC_SD 114 mm); fine at these speeds, not tidy.
+- The JST connector mouth faces the battery area and the foot-board slot is 4 mm below it; check the plug clears the foot.
 
 ## 10. Things the user needs to buy or decide
 
 - Small neodymium disc magnets, 5 x 2 or 6 x 2 mm (bigger ones risk triggering the neighbouring candle, 22 mm away).
-- Optional LiPo, single cell with protection, JST-PH, up to about 32 x 30 mm (around 500 mAh gives 2–3 hours of light).
+- Optional LiPo, single cell with protection, JST-PH, up to about 30 x 30 mm (around 500 mAh gives 2–3 hours of light).
 - Location for sunset calculation: Bergen County, NJ.
 
 ## 11. Other threads from the same conversation (parked)

@@ -125,9 +125,9 @@ for a, b in [((bz[0], bz[1]), (bz[2], bz[1])), ((bz[2], bz[1]), (bz[2], bz[3])),
     s.SetShape(pcbnew.SHAPE_T_SEGMENT)
     s.SetStart(V(*a)); s.SetEnd(V(*b)); s.SetLayer(pcbnew.B_SilkS); s.SetWidth(FromMM(0.15))
     board.Add(s)
-text("LiPo 3.7V (max 32x30mm)", 126, 135.5, 1.2)
-text("CHECK POLARITY", 126, 138.5, 1.0)
-text("Menorah v1  5787", 126, 148.5, 1.0)
+text("LiPo 3.7V (max 30x30mm)", 124, 135.5, 1.2)
+text("CHECK POLARITY  + / -  AT J2", 124, 138.5, 1.0)
+text("Menorah v1  5787", 124, 148.5, 1.0)
 
 pcbnew.SaveBoard(PCB, board)
 

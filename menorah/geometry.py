@@ -68,9 +68,13 @@ def candles():
 
 
 def chain_order():
-    """LED data chain: SH, C5..C8, C4..C1; inside a candle bottom->top, flame last."""
+    """LED data chain, left to right: C1..C4, SH, C5..C8; inside a candle bottom->top, flame last.
+
+    Left-to-right order lets every candle-to-candle data link be a short hop along the
+    crossbar (the level shifter sits under C1), so the whole chain routes on the back.
+    """
     cs = {c["id"]: c for c in candles()}
-    order = ["SH", "C5", "C6", "C7", "C8", "C4", "C3", "C2", "C1"]
+    order = ["C1", "C2", "C3", "C4", "SH", "C5", "C6", "C7", "C8"]
     leds = []
     for cid in order:
         c = cs[cid]

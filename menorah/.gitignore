@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+out/*.svg
+*.kicad_prl
+out/route.log
+out/menorah.kicad_pcb
+out/menorah.kicad_pro
+out/menorah_routed.kicad_pcb
+out/menorah_routed.kicad_pro
+fp-info-cache
