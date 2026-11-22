@@ -10,9 +10,9 @@ designed with Claude, assembled by JLCPCB, in hand for the first night of Hanukk
 - Status after the Claude Code session (Sun 2026-11-22):
   - DONE: placement, **full routing**, GND pours on both layers, front gold artwork (flames, hall rings, mic ring,
     border, Hebrew lettering), back silk labels, **DRC with 0 errors / 0 unconnected** (`out/drc_final.rpt`; the only
-    remaining entries are 157 harmless "footprint has no library link" warnings), Gerbers + drill, JLCPCB BOM and CPL,
+    remaining entries are 158 harmless "footprint has no library link" warnings), Gerbers + drill, JLCPCB BOM and CPL,
     foot board and wand outlines with Gerbers.
-  - NOT DONE: JLCPCB upload / stock check / placement-preview check (needs a human), firmware.
+  - NOT DONE: JLCPCB BOM matching and placement-preview check (needs a signed-in human), firmware.
   - There is still **no `.kicad_sch`**. The schematic exists only as `netlist.py`; the board is generated from code.
   - Things that changed from the handoff design are listed in section 8a. **The pin map changed** (section 4).
 
@@ -56,9 +56,9 @@ Night N lights the N right-most candles as seen from the front (C(9-N)..C8).
 ```
 USB-C VBUS --+-- D1 SS34 --> VSYS --+-- U3 AP2112K-3.3 --> +3V3 (ESP32, 9 hall sensors, mic)
              |                      +-- Q2 AO3401A (high side) --> VLED (47 LEDs, U4)
-             +-- U2 TP4057 --> VBAT        ^ gate: R8 100k pull-up + C9 100n to VSYS,
+             +-- U2 TP4057 --> VBAT        ^ gate: R8 100k pull-up + C9 1u to VSYS,
              +-- gate of Q1                  R9 10k to Q3 2N7002 drain, Q3 gate = VLED_EN (R10 100k pulldown)
-VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 10k G->GND) --> VSYS when USB is absent
+VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 2k2 G->GND) --> VSYS when USB is absent
 ```
 
 - **VLED is switched** so the LEDs (about 1 mA each idle) draw nothing in sleep. Default off.
@@ -71,7 +71,7 @@ VBAT (J2 JST-PH) -- Q1 AO3401A (D=VBAT, S=VSYS, G=VBUS, R5 10k G->GND) --> VSYS 
 - TP4057 CHRG (open drain) goes to IO18; use the internal pull-up. STDBY unconnected.
 - USB: CC1/CC2 5.1 k to GND, USBLC6-2SC6 ESD on D+/D-, D+ = IO20, D- = IO19.
 - EN: R1 10 k pull-up, C2 1 µF, SW2 to GND. BOOT: SW1 on IO0.
-- Mic ICS-43434 (I2S): LR tied to GND (left channel).
+- Mic **ICS-43432** (I2S, 4 x 3 mm, bottom port; replaces the out-of-stock ICS-43434): LR and CONFIG tied to GND (left channel), 100 n (C12) at VDD, R12 100 k pull-down on SD as the datasheet asks. Footprint `menorah.pretty/ICS-43432.kicad_mod` was drawn from datasheet DS-000038 figures 3, 15, 16, 17.
 - Hall sensors DRV5032FA: push-pull, omnipolar, output LOW when a magnet is present, 100 n each.
 - Each LED has a 100 n cap; 22 µF VLED bulk at Q2 and at both ends of the crossbar.
 - Firmware must cap LED brightness: 47 LEDs at full white is about 1.7 A.
@@ -84,7 +84,7 @@ The pin map was re-done during routing so that every bundle reaches the module w
 |---|---|---|
 | HALL_C1 / C2 | IO4 [4] / IO5 [5] | |
 | LED_DATA | IO6 [6] | to U4 (under C1), then the LED chain |
-| MIC_SCK / MIC_WS / MIC_SD | IO7 [7] / IO15 [8] / IO16 [9] | I2S |
+| MIC_SD / MIC_SCK / MIC_WS | IO7 [7] / IO15 [8] / IO16 [9] | I2S (order changed with the ICS-43432) |
 | VLED_EN | IO17 [10] | high = LEDs powered |
 | CHRG_N | IO18 [11] | input, pull-up |
 | VBAT_SENSE | IO8 [12] | ADC1_CH7 |
@@ -111,7 +111,7 @@ Refs D101..D147 follow chain order. `geometry.chain_order()` is authoritative.
 | U1 | ESP32-S3-WROOM-1-N8R8 | C2913201 | module | N8 (C2913198) or N16R8 (C2913202) also fit |
 | D101–D147 | SK6812MINI-E | C5149201 | reverse-mount | "Standard only", custom footprint |
 | U11–U19 | DRV5032FADBZR | C140921 | SOT-23 | 1 VCC, 2 OUT, 3 GND |
-| MK1 | ICS-43434 | C5656610 | LGA-6 | bottom port; last-time-buy at DigiKey, stock risk |
+| MK1 | ICS-43432 | C574021 | LGA 4x3, 7 pads | bottom port; 1,699 at JLCPCB on 2026-11-22 (ICS-43434 C5656610 was at 0) |
 | U2 | TP4057 | C12044 | SOT-23-6 | 1 CHRG, 2 GND, 3 BAT, 4 VCC, 5 STDBY, 6 PROG |
 | U3 | AP2112K-3.3TRG1 | C51118 | SOT-23-5 | |
 | U4 | SN74LV1T34DBVR | C100024 | SOT-23-5 | 2 A, 3 GND, 4 Y, 5 VCC |
@@ -126,18 +126,18 @@ Refs D101..D147 follow chain order. `geometry.chain_order()` is authoritative.
 | 1 µ 0603 | | C15849 | | C2, C4, C9 |
 | 10 µ 0805 | | C15850 | | C3, C5 |
 | 22 µ 0805 | | C45783 | | C6, C7, C10, C13, C14 |
-| 10 k / 100 k / 5.1 k / 3.3 k / 100 Ω / 2.2 k 0603 | | C25804 / C25803 / C23186 / C22978 / C22775 / C4190 | | R5 is the 2.2 k |
+| 10 k / 100 k / 5.1 k / 3.3 k / 100 Ω / 2.2 k 0603 | | C25804 / C25803 / C23186 / C22978 / C22775 / C4190 | | R5 is the 2.2 k; R12 (100 k) is the mic SD pull-down |
 
 **Verification status — be honest about this:**
 - Pinouts checked against datasheets/KiCad symbols: DRV5032, TP4057, SN74LV1T34, ESP32 module, ICS-43434, SK6812MINI-E (pin names).
 - LED footprint: geometry copied from `ebastler/marbastlib` `LED_6028R`, cross-checked against Keebio's `SK6812-MINI-E` (same pad arrangement after a 180° turn). Pads renumbered to the datasheet (1 VDD, 2 DOUT, 3 GND, 4 DIN).
 - **Stock checked on 2026-11-22** through LCSC's and JLCPCB's part APIs: every LCSC number resolves to the intended
-  part and package, and everything is in stock at JLCPCB **except the microphone MK1 (ICS-43434, C5656610): 0**.
-  No same-footprint substitute is in stock; the ICS-43432 (C574021, I2S, different footprint) is. Decide: drop the mic
-  or change the footprint. Re-confirm at BOM matching.
+  part and package. The original microphone (ICS-43434, C5656610) was at 0, so MK1 was changed to the **ICS-43432
+  (C574021)**; with that, **every BOM line is in stock at JLCPCB**. Re-confirm at BOM matching.
 - **Independent review** (`REVIEW.md`, 2026-11-22): pin maps checked against fetched datasheets and found correct;
   its findings F1 (LED polarity mark), F2 (CPL rotation convention), F3 (foot height), F5, F6, F9 and part of F7 were
-  fixed afterwards, F4 (mic stock) is open, the rest are notes.
+  fixed afterwards, F4 (mic stock) by switching to the ICS-43432, the rest are notes. The mic change itself was made
+  after that review and has not been reviewed independently yet.
 - (Superseded) Earlier note: JLCPCB stock was NOT confirmed for any part (the part pages did not expose stock). Only the ESP32 N8R8 showed "In Stock: 9884" in a search snippet of unknown date. Passive and discrete LCSC numbers are from memory. **Confirm every line in JLCPCB's BOM-matching screen.**
 - Re-checked in the Claude Code session: the LED footprint pad arrangement against marbastlib's `LED_6028R` plus its
   symbol (1 VDD, 2 DOUT, 3 DIN, 4 VSS there; ours renumbers 3/4 to the datasheet), and the IC pinouts in `netlist.py`
@@ -177,6 +177,8 @@ fab.py         out/fab/: Gerbers + drill (zip), bom_jlc.csv, cpl_jlc.csv
 extras.py      out/extras/: foot board and magnet wand (bare boards) with Gerber zips
 render.py      kicad-cli SVG -> PNG:  render.py out/board.kicad_pcb name LAYERS x 2400 [x0 y0 x1 y1 crop]
 menorah.pretty/SK6812MINI-E_Rev.kicad_mod   reverse-mount LED footprint (KiCad 7 syntax)
+menorah.pretty/ICS-43432.kicad_mod          microphone footprint, drawn from the datasheet
+REVIEW.md      independent pre-order review and what was done about it
 ```
 
 Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route.py takes about 2 minutes; use
@@ -242,9 +244,9 @@ Full rebuild: `build.py && route.py && finish.py && drc.py ... && fab.py` (route
 Known weak points to keep in mind:
 - Nothing here has been checked by a second person or against opened datasheets in this session (section 5).
 - Single 0.3 mm vias carry VBAT (battery path, 0.5 mm track, about 73 mm long) — fine for 1 A, not generous.
-- A few signals take long routes in the base (EN 134 mm, BOOT 117 mm, MIC_SD 114 mm); fine at these speeds, not tidy.
+- A few signals take long routes in the base (EN 134 mm, BOOT 117 mm, MIC_WS 114 mm); fine at these speeds, not tidy.
 - The JST connector mouth faces the battery area; the seated foot board stops 1 mm below J2's lower pad.
-- Firmware notes from the review: enable the internal pull-down on MIC_SD; two neighbouring halls can both read a magnet held between candles; cap LED current at about 1 A.
+- Firmware notes from the review: two neighbouring halls can both read a magnet held between candles; cap LED current at about 1 A.
 
 ## 10. Things the user needs to buy or decide
 

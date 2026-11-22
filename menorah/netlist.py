@@ -24,7 +24,7 @@ ESP = {"GND": ["1", "40", "41"], "3V3": "2", "EN": "3", "IO4": "4", "IO5": "5", 
 HALL_GPIO = {"C1": "IO4", "C2": "IO5", "SH": "IO9", "C5": "IO10", "C6": "IO11", "C7": "IO12", "C8": "IO13",
              "C3": "IO14", "C4": "IO21"}        # all RTC-capable (GPIO0..21) -> any candle can wake the board
 GPIO_NETS = {"IO19": "USB_DN", "IO20": "USB_DP",
-             "IO6": "LED_DATA_3V3", "IO7": "MIC_SCK", "IO15": "MIC_WS", "IO16": "MIC_SD",
+             "IO6": "LED_DATA_3V3", "IO7": "MIC_SD", "IO15": "MIC_SCK", "IO16": "MIC_WS",
              "IO17": "VLED_EN", "IO18": "CHRG_N", "IO8": "VBAT_SENSE",        # IO8 = ADC1_CH7
              "IO47": "EXP_IO47", "IO48": "EXP_IO48", "IO0": "BOOT", "EN": "EN",
              "RXD0": "UART_RX", "TXD0": "UART_TX"}
@@ -104,9 +104,11 @@ P("U4", "Package_TO_SOT_SMD", "SOT-23-5", "SN74LV1T34", "C100024", 7.86, 77.6, 1
   {"1": None, "2": "LED_DATA_3V3", "3": "GND", "4": "LED_DATA_5V", "5": "VLED"})
 P("C11", *C0603, "100n", C100N, 11.2, 78.0, 90, {"1": "VLED", "2": "GND"})
 P("R11", *R0603, "100R", R100R, 9.0, 74.3, 90, {"1": "LED_DATA_5V", "2": "LED_D0"})
-P("MK1", "Sensor_Audio", "InvenSense_ICS-43434-6_3.5x2.65mm", "ICS-43434", "C5656610", G.MIC[0], G.MIC[1] - 0.71, 0,
-  {"1": "MIC_WS", "2": "GND", "3": "GND", "4": "MIC_SCK", "5": "+3V3", "6": "MIC_SD"})
-P("C12", *C0603, "100n", C100N, 100.3, 92.3, 180, {"1": "+3V3", "2": "GND"})
+# ICS-43432 (the ICS-43434 was out of stock at JLCPCB): package centre is 0.9 mm below the sound port
+P("MK1", MY, "ICS-43432", "ICS-43432", "C574021", G.MIC[0], G.MIC[1] + 0.9, 0,
+  {"1": "GND", "2": "GND", "3": "+3V3", "4": "GND", "5": "MIC_WS", "6": "MIC_SCK", "7": "MIC_SD"})   # LR, CONFIG low
+P("C12", *C0603, "100n", C100N, 98.9, 99.95, 180, {"1": "+3V3", "2": "GND"})
+P("R12", *R0603, "100k", R100K, 100.6, 102.2, 0, {"1": "MIC_SD", "2": "GND"})      # SD tri-states between frames
 P("C13", *C0805, "22u", C22U, 42.0, 82.2, 0, {"1": "VLED", "2": "GND"})
 P("C14", *C0805, "22u", C22U, 158.0, 82.2, 0, {"1": "VLED", "2": "GND"})
 

@@ -33,7 +33,7 @@ Y_HR = {"SH": 76.7, "C5": 77.5, "C6": 78.3, "C7": 79.1, "C8": 79.9}      # right
 X_DATA = 94.5
 X_HL = {"C1": 95.16, "C2": 95.82, "C3": 96.48, "C4": 97.14}
 X_TL = 97.9
-X_SCK, X_WS, X_SD = 98.45, 102.65, 103.1      # microphone lines (mic sits at 100, 95.3)
+X_SD, X_SCK, X_WS = 101.9, 102.35, 102.8      # microphone lines, east of the mic (port at 100, 96)
 X_V = 103.9            # VLED trunk, 0.8 wide (directly below the shamash VLED drop)
 X_TR = 104.7
 X_HR = {"SH": 105.45, "C5": 106.11, "C6": 106.77, "C7": 107.43, "C8": 108.09}
@@ -254,17 +254,20 @@ def route_all():
         VIA("GND", xg, 80.75)
         T("GND", [(xg, 80.75), (xg, 82.2)], 0.6)
 
-    # ---- microphone (MK1 at 100, 95.29; C12 above it), all on the back
-    T("MIC_WS", [(100.9, 93.926), (X_WS - 0.25, 93.926), (X_WS, 94.176), (X_WS, Y_STEM_END)])
-    T("MIC_SD", [(100.0, 93.926), (100.0, 93.2), (X_SD - 0.25, 93.2), (X_SD, 93.45), (X_SD, Y_STEM_END)])
-    T("MIC_SCK", [(99.1, 94.748), (X_SCK, 94.748), (X_SCK, Y_STEM_END)])
-    T("+3V3", [(99.1, 93.926), (99.1, 93.0), (99.525, 92.575), (99.525, 92.3)], 0.3)
-    T("+3V3", [(99.525, 92.3), (99.525, 91.3), (X_TL, 91.3)], 0.3)
-    T("GND", [(100.9, 94.748), (101.95, 94.748)], 0.3)
-    VIA("GND", 101.95, 94.75)
-    T("GND", [(100.9, 94.748), (100.55, 95.55)], 0.25)
-    T("GND", [(101.075, 92.3), (102.2, 92.3)], 0.3)
-    VIA("GND", 102.2, 92.3)
+    # ---- microphone MK1 = ICS-43432, all on the back.  Seen from the front: sound port at (100, 96), package centre
+    #      (100, 96.9); east column WS / SCK / SD, west column VDD / CONFIG / LR (top to bottom).
+    T("MIC_WS", [(101.075, 97.275), (X_WS - 0.25, 97.275), (X_WS, 97.525), (X_WS, Y_STEM_END)])
+    T("MIC_SCK", [(101.075, 97.925), (X_SCK - 0.25, 97.925), (X_SCK, 98.175), (X_SCK, Y_STEM_END)])
+    T("MIC_SD", [(101.075, 98.575), (X_SD - 0.25, 98.575), (X_SD, 98.825), (X_SD, Y_STEM_END)])
+    T("MIC_SD", [(101.425, 102.2), (X_SD, 102.2)])                                   # R12 pull-down
+    T("+3V3", [(X_TL, 97.275), (98.925, 97.275)], 0.3)                               # VDD straight off the 3V3 column
+    T("+3V3", [(X_TL, 99.95), (98.125, 99.95)], 0.3)                                 # C12
+    T("GND", [(98.925, 97.925), (98.925, 98.575), (99.675, 99.325), (99.675, 99.95)], 0.25)   # CONFIG, LR -> C12 ground
+    T("GND", [(99.675, 99.95), (99.675, 100.4), (99.775, 101.7), (99.775, 102.2)], 0.25)      # R12 ground
+    T("GND", [(99.675, 99.95), (100.9, 100.3)], 0.3)
+    VIA("GND", 100.9, 100.3)
+    T("GND", [(100.675, 96.0), (102.3, 95.6)], 0.3)                                  # port ring
+    VIA("GND", 102.3, 95.6)
 
     # ---- USB: the two VBUS pad pairs of J1 are bridged on the front, over the D+/D-/CC lines leaving the connector;
     #      from there VBUS crosses under the module on the front to the power section (two vias at each end)
@@ -297,6 +300,11 @@ def route_all():
     T("EN", [(PAD_X, 128.03), (80.475, 128.1)], 0.3)
     T("EN", [(80.475, 128.1), (80.75, 128.4), (81.55, 129.2), (82.625, 129.6)])
 
+    # ---- the front pour between the hall columns at the stem foot is fenced in by front tracks; tie C10's ground
+    #      (and with it that pour pocket) to the main pour north of the C3/C4 hop rows
+    T("GND", [(101.6, 117.0), (100.6, 116.0), (100.6, 112.6)], 0.5)
+    VIA("GND", 100.6, 112.6)
+
     # ---- two ground pads the maze router cannot reach a via from
     T("GND", [(102.4375, 125.55), (102.075, 126.3), (102.075, 127.3)], 0.4)       # Q3 source -> R10 ground pad
     T("GND", [(84.175, 129.6), (85.4, 129.6)], 0.4)                               # C2
@@ -310,7 +318,7 @@ def route_all():
         VIA("GND", vx, vy)
 
     # ---- short escapes for the remaining east pads (6..12) so nothing can box them in
-    for k, net in enumerate(["LED_DATA_3V3", "MIC_SCK", "MIC_WS", "MIC_SD", "VLED_EN", "CHRG_N", "VBAT_SENSE"]):
+    for k, net in enumerate(["LED_DATA_3V3", "MIC_SD", "MIC_SCK", "MIC_WS", "VLED_EN", "CHRG_N", "VBAT_SENSE"]):
         y = 131.84 + 1.27 * k
         T(net, [(PAD_X, y), (80.5, y)])
 

@@ -27,7 +27,7 @@ LAYER_NAME = {F: "F", B: "B"}
 NET_WIDTH = {"VBUS": 0.6, "VSYS": 0.6, "VBAT": 0.5, "+3V3": 0.5, "VLED": 0.5, "GND": 0.4}
 ORDER = ["USB_DP", "USB_DN", "CC1", "CC2", "PROG", "Q2_G", "Q3_D", "EXP_IO47", "EXP_IO48",
          "VBUS", "VSYS", "VBAT", "VBAT_SENSE", "CHRG_N", "VLED_EN",
-         "LED_DATA_3V3", "MIC_SCK", "MIC_WS", "MIC_SD",
+         "LED_DATA_3V3", "MIC_SD", "MIC_SCK", "MIC_WS",
          "+3V3", "EN", "VLED", "BOOT", "UART_TX", "UART_RX"]
 COST_B, COST_F, COST_VIA = 1.0, 2.5, 120.0
 BASE_Y = 110.0

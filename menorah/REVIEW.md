@@ -1,7 +1,7 @@
 > Independent pre-order review, written by a separate reviewer agent on 2026-11-22 against the board as it was
 > before the fixes below. Applied afterwards: F1 (silk dot moved to the GND corner), F2 (CPL uses 180 − angle),
 > F3 (foot is 80 x 18 mm, 2.5 mm slot), F5 (C9 = 1 µF), F6 (R5 = 2.2 k), F9 (no soldermask subtraction on silk),
-> F7 in part (four vias on the module ground pad), F11 BOM line merge. Open: F4 (microphone stock). The rest are notes.
+> F7 in part (four vias on the module ground pad), F11 BOM line merge. F4: MK1 changed to the in-stock ICS-43432 (new footprint, re-routed; this change post-dates the review). The rest are notes.
 
 # Menorah v1 — independent pre-order design review
 
