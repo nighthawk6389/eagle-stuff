@@ -176,6 +176,8 @@ finish.py      GND pours, front artwork, silk labels -> out/menorah_final.kicad_
 drc.py         DRC in a fresh process:  drc.py out/menorah_final.kicad_pcb out/drc_final.rpt
 fab.py         out/fab/: Gerbers + drill (zip), bom_jlc.csv, cpl_jlc.csv
 extras.py      out/extras/: foot board and magnet wand (bare boards) with Gerber zips
+enclosure.py   out/enclosure/: 3D-printable back shells + stand (STL, 3MF, print notes), generated from the board;
+               NOT fit-tested. Needs `pip install manifold3d trimesh`. With this enclosure the PCB feet are not used.
 render.py      kicad-cli SVG -> PNG:  render.py out/board.kicad_pcb name LAYERS x 2400 [x0 y0 x1 y1 crop]
 menorah.pretty/SK6812MINI-E_Rev.kicad_mod   reverse-mount LED footprint (KiCad 7 syntax)
 menorah.pretty/ICS-43432.kicad_mod          microphone footprint, drawn from the datasheet
