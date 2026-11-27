@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+pod/*.kicad_prl
+pod/fp-info-cache
+pod/*-backups/
+pod/~*
+pod/*.lck
+out/*.net
