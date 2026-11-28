@@ -58,18 +58,24 @@ def main():
     if os.path.exists(ses):
         os.remove(ses)
     cmd = ["java", "-Djava.awt.headless=true", "-jar", jar, "-de", dsn, "-do", ses, "-mp", passes, "-mt", "1",
-           "-da", f"--router.max_passes={passes}", "--router.job_timeout=00:12:00", "--gui.enabled=false"]
+           "-da", f"--router.max_passes={passes}", "--router.job_timeout=00:08:00", "--gui.enabled=false"]
     log = open(os.path.join(work, "freerouting.log"), "w")
     subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=3000)
     assert os.path.exists(ses), "Freerouting wrote no session file; see out/route/freerouting.log"
+    # bring the result back in a fresh interpreter: pcbnew is not reliable after the edits above
+    return subprocess.run([sys.executable, os.path.abspath(__file__), "--import"]).returncode
+
+
+def bring_back():
+    ses = os.path.join(os.path.dirname(HERE), "out", "route", "pod.ses")
     shutil.copy(SRC, DST)
-    shutil.copy(SRC.replace('.kicad_pcb', '.kicad_pro'), DST.replace('.kicad_pcb', '.kicad_pro'))   # rules and net classes
+    shutil.copy(SRC.replace(".kicad_pcb", ".kicad_pro"), DST.replace(".kicad_pcb", ".kicad_pro"))   # rules, net classes
     board = pcbnew.LoadBoard(DST)
     assert pcbnew.ImportSpecctraSES(board, ses), "SES import failed"
     pcbnew.SaveBoard(DST, board)
-    print("tracks", len(board.GetTracks()))
+    print("tracks and vias:", len(board.GetTracks()))
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(bring_back() if "--import" in sys.argv else main())

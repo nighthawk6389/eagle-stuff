@@ -99,20 +99,20 @@ def placement():
         for pin in range(1, 17):
             ref = f"C{b + 1 + order.index(pin)}"
             if pin <= 8:
-                P[ref] = (bx - 10.75, cy + 4.2 - 1.2 * (pin - 1), 180)
+                P[ref] = (bx - 10.9, cy + 4.2 - 1.2 * (pin - 1), 180)
             else:
-                P[ref] = (bx + 10.75, cy + 4.2 - 1.2 * (16 - pin), 0)
+                P[ref] = (bx + 10.9, cy + 4.2 - 1.2 * (16 - pin), 0)
         c = b + 20
         left = [(f"C{c + 6}", -5.4), (f"C{c + 7}", -4.2), (f"C{c + 4}", -3.0), (f"C{c + 5}", -1.8),
                 (f"C{c + 13}", -0.6), (f"C{c + 12}", 0.6), (f"C{c + 3}", 1.8), (f"C{c + 2}", 3.0),
                 (f"C{c + 15}", 4.2)]
         for ref, dy in left:
-            P[ref] = (bx - 7.75, cy + dy, 180)
+            P[ref] = (bx - 7.6, cy + dy, 180)
         right = [(f"C{c}", 5.3), (f"C{c + 1}", 4.2), (f"C{c + 9}", 3.1), (f"C{c + 14}", -1.2),
                  (f"C{c + 11}", -2.7)]
         for ref, dy in right:
-            P[ref] = (bx + 7.75, cy + dy, 0)
-        P[f"C{c + 8}"] = (bx + 7.85, cy + 1.0, 270)       # 10 uF 0603 on VREFP, pad 1 next to pin 24
+            P[ref] = (bx + 7.6, cy + dy, 0)
+        P[f"C{c + 8}"] = (bx + 7.7, cy + 1.0, 270)       # 10 uF 0603 on VREFP, pad 1 next to pin 24
         P[f"C{c + 10}"] = (bx + 5.2, cy - 8.3, 180)        # 22 uF tantalum on VCAP1
         # digital-side resistors above the chip
         P[f"R{b + 21}"] = (bx - 1.3, cy - 8.1, 90)         # DOUT series
@@ -120,18 +120,22 @@ def placement():
         P[f"R{b + 20}"] = (bx + 1.7, cy - 8.1, 270)        # PWDN pull-up
         # ESD arrays and their capacitors, either side of the resistor arrays
         # ESD arrays and their capacitors in the corners beside the connector; the bias one above it
-        for n, dx, y in [(4, -10.2, 42.2), (3, -10.2, 46.0), (2, 10.2, 42.2), (1, 10.2, 46.0)]:
-            P[f"U{b + n}"] = (bx + dx, y, 90)              # pads in two rows, so every one can be reached
-            P[f"C{b + 40 + n}"] = (bx + dx, y + 1.9, 0)
+        # pads in two rows so every one can be reached; the ground pad faces the connector side
+        for n, y in [(4, 42.2), (3, 46.0)]:
+            P[f"U{b + n}"] = (bx - 10.2, y, 90)
+            P[f"C{b + 40 + n}"] = (bx - 10.2, y + 1.9, 0)
+        for n, y in [(2, 42.2), (1, 46.0)]:
+            P[f"U{b + n}"] = (bx + 10.2, y, 270)
+            P[f"C{b + 40 + n}"] = (bx + 10.2, y - 1.9, 180)
         P[f"U{b + 5}"] = (bx - 9.6, 37.9, 90)
         P[f"C{b + 45}"] = (bx - 9.6, 40.0, 0)
         P[f"R{b + 22}"] = (bx + 6.2, 40.2, 0)             # shield link
         if X == "A":
-            P["R124"] = (bx - 7.75, cy + 5.4, 180)
+            P["R124"] = (bx - 7.6, cy + 5.4, 180)
             P["C140"] = (bx - 5.9, 38.0, 90)
             P["R125"] = (bx - 5.7, 40.3, 0)
         else:
-            P["R224"] = (bx - 7.75, cy + 5.4, 180)
+            P["R224"] = (bx - 7.6, cy + 5.4, 180)
     return P
 
 
@@ -291,6 +295,56 @@ def main():
             track(jp, (x, ey), e_net, width=FINE)
             via((x, ey), e_net)
 
+    # ---- every ESD array and its capacitor share one fixed ground via
+    for b in (100, 200):
+        for n in range(1, 6):
+            g, cg = pad_xy(f"U{b + n}", 3), pad_xy(f"C{b + 40 + n}", 2)
+            assert abs(g[0] - cg[0]) < 0.1, (b, n, g, cg)
+            side = 1 if n >= 3 else -1                  # towards the connector
+            vp = (round(g[0] + side * 1.0, 3), round((g[1] + cg[1]) / 2, 3))
+            track(g, vp, "GND", width=0.2)
+            track(cg, vp, "GND", width=0.2)
+            via(vp, "GND")
+
+    # ---- fixed ground: a bus through each capacitor column with a via at its ends, and a via for every
+    #      group of ground pins under each converter. The autorouter then works around them.
+    def chain(points, ends):
+        for a, b in zip(points[:-1], points[1:]):
+            track(a, b, "GND", width=0.2)
+        for e, at in ends:
+            track(at, e, "GND", width=0.2)
+            via(e, "GND")
+
+    order = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    for X, b in (("A", 100), ("B", 200)):
+        bx, cy, c = BX[X], CHIP_Y, b + 20
+        for side, pins in ((-1, range(1, 9)), (1, range(9, 17))):
+            pts = sorted((pad_xy(f"C{b + 1 + order.index(p)}", 2) for p in pins), key=lambda q: q[1])
+            chain(pts, [((pts[0][0], round(pts[0][1] - 0.95, 3)), pts[0]), ((pts[-1][0], round(pts[-1][1] + 0.95, 3)), pts[-1])])
+        left = sorted((pad_xy(f"C{c + n}", 2) for n in (6, 7, 4, 5, 13, 12, 3, 2, 15)), key=lambda q: q[1])
+        chain(left, [((left[0][0], round(left[0][1] - 0.95, 3)), left[0]), ((round(left[-1][0] - 0.95, 3), left[-1][1]), left[-1])])
+        r1 = sorted((pad_xy(f"C{c + n}", 2) for n in (0, 1, 9)), key=lambda q: q[1])
+        chain(r1 + [], [((r1[-1][0], round(r1[-1][1] + 0.95, 3)), r1[-1])])
+        track(r1[0], pad_xy(f"C{c + 8}", 2), "GND", width=0.2)
+        r2 = sorted((pad_xy(f"C{c + n}", 2) for n in (14, 11)), key=lambda q: q[1])
+        chain(r2, [((r2[0][0], round(r2[0][1] - 0.95, 3)), r2[0])])
+        # ground pins of the converter: neighbours share a via 0.9 mm inside the pad row
+        groups = [(49,), (51,), (53,), (57, 58), (20,), (23,), (25,), (31, 32), (33,), (41, 42), (44, 45, 46)]
+        for grp in groups:
+            pts = [pad_xy(f"U{b}", n) for n in grp]
+            mx, my = sum(q[0] for q in pts) / len(pts), sum(q[1] for q in pts) / len(pts)
+            dx, dy = bx - mx, cy - my
+            if abs(dx) > abs(dy):                           # pin on the left or right side: go horizontally
+                step = (1.65 if dx > 0 else -1.65, 0)
+            else:
+                step = (0, 1.65 if dy > 0 else -1.65)
+            vp = (round(mx + step[0], 3), round(my + step[1], 3))
+            for q in pts:
+                knee = (round(q[0] + step[0] * 0.55, 3), round(q[1] + step[1] * 0.55, 3))
+                track(q, knee, "GND", width=FINE)
+                track(knee, vp, "GND", width=FINE)
+            via(vp, "GND")
+
     # ---- planes: layer 2 is ground everywhere; layer 3 carries AVDD under the converters, ground elsewhere
     def zone(netname, layer, pts, prio=0, name=""):
         z = pcbnew.ZONE(board)
@@ -329,7 +383,7 @@ def main():
     (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
     o = k.Outline()
     o.NewOutline()
-    for x, y in [(25.8, 3.7), (31.6, 3.7), (31.6, 12.8), (25.8, 12.8)]:
+    for x, y in [(26.2, 4.0), (31.2, 4.0), (31.2, 12.4), (26.2, 12.4)]:
         o.Append(FromMM(OX + x), FromMM(OY + y))
     board.Add(k)
 

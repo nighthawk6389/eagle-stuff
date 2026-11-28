@@ -181,7 +181,7 @@
 				(at -17.78 -31.75 0)
 				(effects (font (size 1.27 1.27)) (justify left top))
 			)
-			(property "Footprint" "emgpod:XIAO-nRF52840-SMD"
+			(property "Footprint" "emgpod:XIAO-nRF52840-SMD-noNFC"
 				(at 0 0 0)
 				(effects (font (size 1.27 1.27)) (hide yes))
 			)
@@ -539,7 +539,7 @@
 			(at 101.6 51.5 0)
 			(effects (font (size 1.27 1.27)) (justify left))
 		)
-		(property "Footprint" "emgpod:XIAO-nRF52840-SMD"
+		(property "Footprint" "emgpod:XIAO-nRF52840-SMD-noNFC"
 			(at 101.6 83.82 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
