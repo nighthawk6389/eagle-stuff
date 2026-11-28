@@ -252,6 +252,9 @@ TP_LABEL = {"VBAT": "BAT", "AVDD": "AVDD", "+3V3": "3V3", "GND": "GND", "SCLK": 
             "ADS_CLK": "CLK", "BIAS": "BIAS", "SWDIO": "SWDIO", "SWCLK": "SWCLK", "NRST": "NRST"}
 
 
+LABEL_BELOW = ("TP31",)        # a resistor's outline is in the way above this one
+
+
 def silkscreen(brd):
     """Only a few references, plus the labels a person needs with the board in hand."""
     def text(s, x, y, size=1.0, back=False, width=None):
@@ -298,7 +301,7 @@ def silkscreen(brd):
             if fp.GetLayer() == L.BK:                        # two columns on the back: labels outwards
                 text(label, x, y - 1.4 if x > 46.0 else y + 1.4, 0.8, back=True)
             else:                                            # above the pad; narrow letters, the pads are 2.2 mm apart
-                text(label, x, y - 1.1, 0.8, width=0.62)
+                text(label, x, y + 1.1 if ref in LABEL_BELOW else y - 1.1, 0.8, width=0.62)
 
     # the XIAO: marks at the two corners of its antenna end (the module is 21 x 17.8 mm)
     x0, y0, y1 = B.XIAO_X0 - 0.15, B.XIAO_Y0 - 0.15, B.XIAO_Y0 + 17.8 + 0.15
@@ -333,14 +336,14 @@ def remove_dangling(brd):
                     continue
                 is_via = isinstance(t, pcbnew.PCB_VIA)
                 if kind == "via_dangling" and is_via and t.GetPosition() == pt:
-                    brd.Remove(t)
+                    brd.Delete(t)
                     removed += 1
                     break
                 # the report names the track by net, layer and length; the position alone could be a
                 # point it shares with a neighbour that is in use
                 if (kind == "track_dangling" and not is_via and length and t.GetLayerName() in desc
                         and abs(pcbnew.ToMM(t.GetLength()) - float(length.group(1))) < 0.0006 and t.HitTest(pt)):
-                    brd.Remove(t)
+                    brd.Delete(t)
                     removed += 1
                     break
     return removed
@@ -367,6 +370,13 @@ def ground_pours(brd):
 def main():
     shutil.copy(RAW.replace(".kicad_pcb", ".kicad_pro"), PCB.replace(".kicad_pcb", ".kicad_pro"))
     brd = pcbnew.LoadBoard(RAW)
+    # The input lines are complete as board.py drew them. The autorouter still leaves slivers on their
+    # pads; take those off (if one were needed after all, the checks below would find the gap).
+    lines = re.compile(r"^[AB]_(E|IN)\d")
+    for t in list(brd.GetTracks()):
+        if not t.IsLocked() and (lines.match(t.GetNetname()) or
+                                 (not isinstance(t, pcbnew.PCB_VIA) and t.GetLength() < FromMM(0.005))):
+            brd.Delete(t)
     sig = complete_signals(brd)
     links = link_neighbours(brd, "GND")
     ground_pours(brd)

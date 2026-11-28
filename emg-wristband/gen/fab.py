@@ -157,7 +157,7 @@ def main():
     print(f"{len(os.listdir(g))} gerber and drill files, {len(rows)} placements, {pads} pads on the right nets")
     print(f"DRC: {err} errors, {warn} warnings, {open_} unconnected")
     print(f"router tracks inside the areas kept for the input lines: {len(inside)}" + (f" {inside[:6]}" if inside else ""))
-    print("other signals nearest to an input line on the same layer (mm between centre lines, within 1 mm): "
+    print("other signals nearest to an input line on the same layer (mm between centre lines, complete up to 1 mm): "
           + (", ".join(f"{net} {d} at ({x}, {y})" for d, net, x, y in near[:6]) or "none"))
     return 1 if (err or open_ or inside) else 0
 

@@ -4,7 +4,9 @@ KiCad project for the main pod: two ADS1298 converters, a Seeed XIAO nRF52840 Se
 with a USB interlock, and a vibration-motor driver. The brief is in `CLAUDE.md`. What is still
 uncertain is in `OPEN.md`; read that before trusting anything here.
 
-Status (2026-11-28): schematic drawn, ERC clean, not laid out.
+Status (2026-11-28): schematic drawn and ERC clean; board laid out and routed, 49 x 49 mm, four layers;
+fabrication files written. Nothing has been ordered or built. The layout's open points are under
+"Layout" in `OPEN.md`.
 
 ## Where things are
 
@@ -14,9 +16,12 @@ Status (2026-11-28): schematic drawn, ERC clean, not laid out.
 | `out/bom-jlcpcb.csv` | Bill of materials from the schematic, JLCPCB columns, one LCSC number per line |
 | `out/stock-check.md` | Stock and assembly type of every BOM line, with the date it was read |
 | `out/erc.rpt` | KiCad's ERC report |
-| `pod/` | The KiCad 9 project (`emg-pod.kicad_pro`). Opens in KiCad 9 or newer |
-| `pod/lib/` | Every symbol the schematic uses, and Seeed's XIAO footprint |
-| `gen/` | The Python that writes the schematic |
+| `out/fab/` | Gerbers and drill files (also zipped), `cpl-jlcpcb.csv` (placement) and the BOM, for JLCPCB |
+| `out/drc.rpt` | KiCad's DRC report for the routed board |
+| `out/board-top.png`, `out/board-bottom.png` | KiCad's rendering of the two sides of the bare board |
+| `pod/` | The KiCad 9 project (`emg-pod.kicad_pro`, schematic and `emg-pod.kicad_pcb`). Opens in KiCad 9 or newer |
+| `pod/lib/` | Every symbol the schematic uses, and Seeed's XIAO footprint (plus a copy without the two NFC pads) |
+| `gen/` | The Python that writes the schematic and the board |
 | `tools/` | JLCPCB stock lookup |
 | `docs/sources.md` | The datasheets and Seeed files each pin table came from |
 
@@ -33,8 +38,45 @@ pins with the tables in `gen/design.py` (which take their pin numbers from `gen/
 the datasheets), and exports the PDF and BOM. It exits non-zero if ERC or the comparison fails.
 
 - `gen/parts.py`: pin tables and LCSC numbers. Each table names its datasheet.
-- `gen/design.py`: which pin goes to which net, and where each part is drawn.
+- `gen/design.py`: which pin goes to which net, and where each part is drawn. The board is built from
+  the same tables, so schematic and board cannot disagree about a net.
 - `gen/kisch.py`, `gen/sexp.py`: KiCad file writing.
+
+## The board is generated too
+
+Four steps, each a script. **Edits made in KiCad's board editor are lost when they run again**, same
+as for the schematic.
+
+    /usr/bin/python3 gen/board.py                      # placement, rules, fixed routes -> pod/emg-pod-unrouted.kicad_pcb
+    /usr/bin/python3 gen/route.py freerouting-2.1.0.jar   # autoroute the rest (Freerouting, about 9 minutes)
+    /usr/bin/python3 gen/finish.py                     # leftovers, ground pours, plane vias, silkscreen -> pod/emg-pod.kicad_pcb
+    /usr/bin/python3 gen/fab.py                        # Gerbers, drill, placement file -> out/fab/
+
+They need the `pcbnew` Python module that comes with KiCad 9 (the system Python on Ubuntu) and, for
+`route.py`, Java and the Freerouting 2.1.0 jar from github.com/freerouting/freerouting (not in this repo).
+
+- `gen/board.py` holds everything that was decided by hand: the outline, the design rules, where each
+  part sits, and the routes that must not be left to an autorouter. Those are the 32 electrode lines
+  (connector, resistor array, converter pin, in one straight line on the top layer), their fan-out on
+  the back to the filter capacitors and to the ESD arrays, the via to a plane for every supply and
+  ground pin of the converters, VCAP1, and a ground via beside every ground pad. It also names the
+  areas reserved for the input lines (`quiet_zones`): the fan-out on the back around each converter
+  and the stubs under it on the front. The routers lay nothing there.
+- `gen/route.py` hands the rest to Freerouting. Ground is left out of that: ground pads are joined by
+  the plane, the pours on both outer layers and the vias `finish.py` adds.
+- `gen/finish.py` completes what Freerouting gave up on with a small grid router (`gen/lastmile.py`),
+  pours ground on the outer layers, gives supply pads a via to their plane, stitches the pours to the
+  ground plane, removes dead-end stubs, and runs KiCad's DRC. It prints what is still open, if anything.
+- `gen/fab.py` writes the Gerbers, drill files and placement file, checks every pad's net against
+  `gen/design.py`, checks that no routed track entered a reserved area, reports how close other
+  signals come to an input line, and writes the full DRC report. It exits non-zero unless DRC has no
+  errors, nothing is unconnected and the reserved areas are clean.
+
+Any change to `gen/board.py` moves many of the autorouted tracks on the next run. The board in `pod/`
+is the result of one run, and `out/fab/` was made from exactly that file.
+
+Layers: 1 signal and parts, 2 unbroken ground, 3 supplies (+3V3 above y = 27.6 mm, AVDD below, ground
+fill elsewhere), 4 signal. No parts on the back; the four SWD rescue pads are there, under the XIAO.
 
 ## Sheets
 

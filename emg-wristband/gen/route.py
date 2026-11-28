@@ -29,6 +29,19 @@ def main():
     os.makedirs(work, exist_ok=True)
     dsn, ses = os.path.join(work, "pod.dsn"), os.path.join(work, "pod.ses")
     board = pcbnew.LoadBoard(SRC)
+    # The areas kept for the input lines become keep-outs for the router (only on this copy of the board).
+    for layer, qx0, qy0, qx1, qy1 in B.quiet_zones():
+        k = pcbnew.ZONE(board)
+        k.SetIsRuleArea(True)
+        k.SetLayer(layer)
+        k.SetDoNotAllowTracks(True)
+        k.SetDoNotAllowVias(True)
+        k.SetDoNotAllowPads(False)
+        k.SetDoNotAllowFootprints(False)
+        (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
+        k.AddPolygon(pcbnew.VECTOR_VECTOR2I([pcbnew.VECTOR2I(pcbnew.FromMM(B.OX + qx), pcbnew.FromMM(B.OY + qy))
+                                             for qx, qy in ((qx0, qy0), (qx1, qy0), (qx1, qy1), (qx0, qy1))]))
+        board.Add(k)
     # The router keeps copper off the outline only by the track clearance, so give it an outline
     # drawn 0.4 mm inside the real one (this copy of the board is not saved).
     bb = board.GetBoardEdgesBoundingBox()
@@ -45,21 +58,6 @@ def main():
         s.SetLayer(pcbnew.Edge_Cuts)
         s.SetWidth(pcbnew.FromMM(0.1))
         board.Add(s)
-    # The areas kept for the input lines become keep-outs for the router (again only on this copy).
-    for layer, qx0, qy0, qx1, qy1 in B.quiet_zones():
-        k = pcbnew.ZONE(board)
-        k.SetIsRuleArea(True)
-        k.SetLayer(layer)
-        k.SetDoNotAllowTracks(True)
-        k.SetDoNotAllowVias(True)
-        k.SetDoNotAllowPads(False)
-        k.SetDoNotAllowFootprints(False)
-        (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
-        o = k.Outline()
-        o.NewOutline()
-        for qx, qy in ((qx0, qy0), (qx1, qy0), (qx1, qy1), (qx0, qy1)):
-            o.Append(pcbnew.FromMM(B.OX + qx), pcbnew.FromMM(B.OY + qy))
-        board.Add(k)
     assert pcbnew.ExportSpecctraDSN(board, dsn), "DSN export failed"
     # Ground is not autorouted: its pads are joined by the pours and planes (gen/finish.py).
     text = open(dsn).read()

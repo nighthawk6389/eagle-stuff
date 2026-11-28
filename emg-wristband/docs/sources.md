@@ -1,4 +1,4 @@
-# Documents the schematic was taken from
+# Documents the schematic and the board were taken from
 
 Read on 2026-11-27. Pin numbers and passive values in `gen/parts.py` and `gen/design.py`
 come from these documents, not from memory.
@@ -36,3 +36,40 @@ contact pads 0.35 wide at 0.5 pitch, at least 3.5 mm insertion depth. The connec
 
 TI E2E thread 870302 (ADS1299 power sequencing): read on 2026-11-28 from a copy of the page the owner
 saved. What it says, and what it does not, is in OPEN.md.
+
+## JLCPCB limits the board was sized against (read 2026-11-28)
+
+From jlcpcb.com/capabilities/pcb-capabilities, multilayer boards, 1 oz outer copper. The right-hand
+column is what `gen/board.py` uses.
+
+| Limit on the page | This board |
+|---|---|
+| Track and spacing 0.09 / 0.09 mm | Tracks 0.127 mm and up, clearance 0.127 mm |
+| Via hole 0.15 mm minimum, diameter at least 0.1 mm larger; holes of 0.25 mm or less cost more below 0.45 mm diameter | One via size: 0.3 mm hole, 0.5 mm diameter |
+| Via hole to track 0.2 mm; via hole to via hole 0.2 mm | 0.2 mm and 0.25 mm set as rules |
+| Plated pad hole to track 0.28 mm (0.35 mm recommended); pad annular ring 0.2 mm | Only the two motor wire pads (0.48 mm hole, 1.0 mm pad): ring 0.26 mm, so tracks stay 0.39 mm from the hole |
+| Copper to a routed board edge 0.2 mm | 0.3 mm |
+| SMD pad to pad, different nets, 0.15 mm; pad to track 0.1 mm | Closest pads are the ESD arrays' at 0.15 mm (library footprint); pad to track 0.127 mm |
+| Inner layer: via hole to copper 0.2 mm | Planes keep 0.2 mm from the via pad, 0.3 mm from the hole |
+| Same-net track spacing 0.25 mm | **Not checked.** KiCad has no rule for it and the autorouted tracks were not inspected for it |
+
+The page states no default via covering for 4-layer boards. The Gerbers have no solder-mask openings
+on vias (tented), which matters under the strip connectors: see OPEN.md.
+
+From jlcpcb.com/capabilities/pcb-assembly-capabilities: Economic assembly takes single boards from
+10 x 10 mm, single-sided, rails and fiducials "Not necessary"; Standard takes 70 x 70 mm to
+460 x 500 mm, single or double sided, rails and fiducials "Necessary". Finest IC pin spacing 0.4 mm
+(Economic) and 0.35 mm (Standard); the board's finest is 0.5 mm.
+
+## Other layout notes
+
+- Hirose FH12 catalogue p. 10 (land drawing for the 0.5 mm bottom-contact type): shows the contact and
+  mounting lands only, with no area marked as closed to copper under the body. The tap tracks and
+  vias of the electrode lines run there.
+- The XIAO footprint on the board is `XIAO-nRF52840-SMD-noNFC`: Seeed's file with pads 21 and 22 (the
+  two NFC pads, unconnected in this design) and its silkscreen outline removed. The outline crossed
+  the module's own pads and the board edge; `gen/finish.py` draws two corner marks instead. The other
+  20 pads are untouched. Seeed's unchanged file is kept beside it.
+- `TestPoint_Pad_D1.0mm_bare` in the project library is KiCad's `TestPoint_Pad_D1.0mm` without its
+  silkscreen ring, so the net labels fit between the pads.
+- Freerouting 2.1.0 (github.com/freerouting/freerouting) did the autorouted part of the board.
