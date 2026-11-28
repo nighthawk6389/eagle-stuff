@@ -13,6 +13,7 @@ from pcbnew import FromMM
 import board as B
 
 F, BK = pcbnew.F_Cu, pcbnew.B_Cu
+PAD_GAP = 0.2          # a via placed here keeps this far from the edge of any pad
 
 
 def add_via(brd, pt, net, lock=False):
@@ -49,6 +50,11 @@ class Space:
                 for lay in (F, BK):
                     if pad.GetNetname() == netname and pad.IsOnLayer(lay):
                         pad.TransformShapeToPolygon(self.own[lay], lay, 0, FromMM(0.01), pcbnew.ERROR_INSIDE)
+        for t in brd.GetTracks():                                         # and its tracks and vias
+            if t.GetNetname() == netname:
+                for lay in (F, BK):
+                    if isinstance(t, pcbnew.PCB_VIA) or t.GetLayer() == lay:
+                        t.TransformShapeToPolygon(self.own[lay], lay, 0, FromMM(0.01), pcbnew.ERROR_INSIDE)
         for lay in (F, BK):
             self.own[lay].Simplify()
         self.pads_no = pcbnew.SHAPE_POLY_SET()           # no via on or touching any pad
@@ -56,7 +62,7 @@ class Space:
             for pad in fp.Pads():
                 for lay in (F, BK):
                     if pad.IsOnLayer(lay):
-                        pad.TransformShapeToPolygon(self.pads_no, lay, FromMM(B.VIA_D / 2 + 0.1), FromMM(0.01),
+                        pad.TransformShapeToPolygon(self.pads_no, lay, FromMM(B.VIA_D / 2 + PAD_GAP), FromMM(0.01),
                                                     pcbnew.ERROR_OUTSIDE)
         self.pads_no.Simplify()
         self.holes = [(v.GetPosition().x, v.GetPosition().y) for v in brd.GetTracks() if isinstance(v, pcbnew.PCB_VIA)]
@@ -75,9 +81,13 @@ class Space:
                     pad.TransformShapeToPolygon(ps, layer, FromMM(margin), FromMM(0.01), pcbnew.ERROR_OUTSIDE)
         keep = pcbnew.SHAPE_POLY_SET()
         for z in self.brd.Zones():
-            if z.GetIsRuleArea():
+            if z.GetIsRuleArea() and z.IsOnLayer(layer):
                 for i in range(z.Outline().OutlineCount()):
                     keep.AddOutline(z.Outline().Outline(i))
+        n0, n1, nd = B.NOTCH                                 # the cut-out in the outline, with the edge clearance
+        keep.NewOutline()
+        for x, y in ((n0 - 0.2, -1.0), (n1 + 0.2, -1.0), (n1 + 0.2, nd + 0.2), (n0 - 0.2, nd + 0.2)):
+            keep.Append(FromMM(B.OX + x), FromMM(B.OY + y))
         if quiet:
             for lay, x0, y0, x1, y1 in B.quiet_zones():
                 if lay == layer:
@@ -132,14 +142,13 @@ def maze(space, start, goal=None, margin=4.0, step=0.1, limit=600000):
     g = cell(goal[0], goal[1]) if goal else None
     gl = goal[2] if goal else None
     ok_cache, via_cache = {}, {}
-    free = int(0.4 / step)
 
     def ok(ix, iy, lay):
         if not (0 <= ix <= nx and 0 <= iy <= ny):
             return False
-        if abs(ix - s[0]) <= free and abs(iy - s[1]) <= free and lay == sl:
-            return True                                    # leaving our own pad
-        if g and abs(ix - g[0]) <= free and abs(iy - g[1]) <= free and (gl is None or lay == gl):
+        if (ix, iy) == s and lay == sl:
+            return True                                    # the ends themselves; around them only the net's
+        if g and (ix, iy) == g and (gl is None or lay == gl):   # own copper is free (Space.own)
             return True
         k = (ix, iy, lay)
         if k not in ok_cache:

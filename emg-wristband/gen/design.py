@@ -9,10 +9,10 @@ import parts
 from kisch import Sheet, uid
 from parts import CAT
 
-POWER = {"GND", "+3V3", "AVDD", "VBAT"}
+POWER = {"GND", "+3V3", "DVDD", "AVDD", "VBAT"}
 # nets that cross between sheets (drawn as global labels)
 GLOBAL = {"SCLK", "MOSI", "MISO", "CS_A", "CS_B", "DRDY_A", "DRDY_B", "ADS_START", "ADS_RESET",
-          "ADS_CLK", "AFE_EN", "MOTOR", "VBUS", "RLDINV", "BIAS"}
+          "ADS_CLK", "AFE_EN", "AVDD_EN", "MOTOR", "VBUS", "RLDINV", "BIAS"}
 
 NET = {}        # (ref, pin) -> net
 PARTS = {}      # ref -> (footprint, value, on the BOM?)
@@ -186,11 +186,12 @@ def power_sheet(s):
     # interlock
     s.text("USB interlock: analog rail off whenever VBUS is present", (25.4, 86.5), 1.8, bold=True)
     s.glabel("AFE_EN", (33.02, 99.06), "input", 180)
-    r1 = d.add("R10K", "R1", 41.91, 99.06, 90, {1: "AFE_EN", 2: "AVDD_EN"})
+    r1 = d.add("R1K", "R1", 41.91, 99.06, 90, {1: "AFE_EN", 2: "AVDD_EN"})
     s.wire((33.02, 99.06), r1.p(1))
     s.wire(r1.p(2), (76.2, 99.06))
-    s.label("AVDD_EN", (46.99, 99.06))
-    r2 = d.add("R100K", "R2", 55.88, 102.87, 0, {1: "AVDD_EN", 2: "GND"})
+    s.wire((76.2, 99.06), (83.82, 99.06))
+    s.glabel("AVDD_EN", (83.82, 99.06), "output", 0)
+    r2 = d.add("R10K", "R2", 55.88, 102.87, 0, {1: "AVDD_EN", 2: "GND"})
     s.power("GND", r2.p(2))
     q1 = d.add("NFET", "Q1", 73.66, 109.22, 0, {1: "VBUS_DET", 2: "GND", 3: "AVDD_EN"},
                ref_at=(78.74, 107.95, "left"), val_at=(78.74, 110.49, "left"))
@@ -211,7 +212,10 @@ def power_sheet(s):
            "Trip point: Q1 turns on for VBUS between 1.3 V and 2.9 V\n"
            "(Vgs(th) 0.65 to 1.45 V, AO3400A datasheet; R3/R4 halve VBUS).\n"
            "R2 holds the rail off while the MCU pin floats (reset, bootloader).\n"
-           "U2 needs EN above 1.2 V to run: 3.3 V x 100k/110k = 3.0 V.",
+           "AVDD_EN is also the PWDN input of both converters, so they are powered down\n"
+           "whenever the analog rail is off. That sets R1 and R2 (SBAS459K digital inputs):\n"
+           "high must reach 0.8 x DVDD, here 10k/11k = 0.91 x DVDD (3.0 V; U2 needs 1.2 V);\n"
+           "low must hold against the two inputs' 10 uA each: 20 uA x 10k = 0.2 V.",
            (25.4, 140.0), 1.1, justify="left top")
 
     # motor
@@ -255,11 +259,11 @@ def mcu_sheet(s):
            "Pads 15 to 22 are on the underside of the XIAO (Seeed bottom-pad drawing).\n"
            "Sense version: 6-axis IMU and PDM microphone are on the module, on its own internal pins.",
            (25.4, 35.5), 1.1, justify="left top")
-    nets = {1: "CS_A", 2: "CS_B", 3: "DRDY_A", 4: "DRDY_B", 5: "MISO", 6: "SCLK_MCU", 7: "ADS_START",
+    nets = {1: "CS_A", 2: "CS_B", 3: "DRDY_A", 4: "ADS_START", 5: "MISO", 6: "SCLK_MCU", 7: None,
             8: "ADS_RESET", 9: "AFE_EN", 10: "MOTOR", 11: "MOSI", 12: "+3V3", 13: "GND", 14: "VBUS",
             15: "SWDIO", 16: "SWCLK", 17: "NRST", 18: "GND", 19: "VBAT", 20: "GND", 21: None, 22: None}
     u = d.add("XIAO", "U1", 101.6, 83.82, 0, nets, ref_at=(83.82, 51.5, "left"), val_at=(101.6, 51.5, "left"))
-    shapes = {1: "output", 2: "output", 3: "input", 4: "input", 5: "input", 7: "output", 8: "output",
+    shapes = {1: "output", 2: "output", 3: "input", 4: "output", 5: "input", 8: "output",
               9: "output", 10: "output", 11: "output", 14: "output"}
     for pin in range(1, 23):
         d.stub(u, pin, 5.08, shapes.get(pin, "passive"))
@@ -269,6 +273,18 @@ def mcu_sheet(s):
     s.text("R20: series resistor at the source of the SPI clock, which fans out to both converters.\n"
            "The value is a starting point, not from a datasheet (see OPEN.md).",
            (25.4, 141.0), 1.1, justify="left top")
+    d.two("R100K", "R23", 99.06, 134.62, "H", "SCLK", "GND", 5.08)
+    d.two("R100K", "R22", 139.7, 134.62, "H", "ADS_START", "GND", 5.08)
+    d.two("R0", "R21", 139.7, 121.92, "H", "+3V3", "DVDD", 5.08)
+    s.power("PWR_FLAG", (146.05, 121.92))              # DVDD has no source that ERC recognises as one
+    s.text("R21: the converters' digital supply (DVDD) comes off the XIAO's\n"
+           "3.3 V through a link, so its current can be measured.\n"
+           "R22, R23: START and SCLK held low while the MCU pins float (reset,\n"
+           "bootloader); the chip selects have pull-ups on the converter sheets.\n"
+           "D6 is not used and has no land: the board is cut away under the\n"
+           "antenna end. Only converter A's DRDY reaches the MCU; converter\n"
+           "B's has a test point (TP16).",
+           (116.84, 148.5), 1.1, justify="left top")
     s.text("Pin choice: Nordic's nRF52840 specification v1.5 marks every XIAO pin except D4 (P0.04) and\n"
            "D5 (P0.05) as low-frequency I/O (up to 10 kHz), because they sit next to the radio.\n"
            "The two fast SPI lines, SCLK and MISO, therefore use D5 and D4. MOSI only carries commands.\n"
@@ -288,7 +304,7 @@ def mcu_sheet(s):
 ESD_IO = [
     {1: "E2P", 2: "E1N", 4: "E1P", 5: "E2N"},
     {1: "E4P", 2: "E4N", 4: "E3P", 5: "E3N"},
-    {1: "E5P", 2: "E5N", 4: "E6N", 5: "E6P"},
+    {1: "E6P", 2: "E5P", 4: "E5N", 5: "E6N"},
     {1: "E8P", 2: "E7N", 4: "E7P", 5: "E8N"},
 ]
 
@@ -343,13 +359,13 @@ def afe_sheet(s, X):
             an[n] = P + name
     fixed = {17: "AVDD", 18: "AVDD", 19: "AVDD", 21: "AVDD", 22: "AVDD", 56: "AVDD", 59: "AVDD", 54: "AVDD",
              20: "GND", 23: "GND", 32: "GND", 57: "GND", 58: "GND", 53: "GND", 33: "GND", 49: "GND", 51: "GND",
-             48: "+3V3", 50: "+3V3", 24: P + "VREFP", 25: "GND", 26: P + "VCAP4", 28: P + "VCAP1",
+             48: "DVDD", 50: "DVDD", 24: P + "VREFP", 25: "GND", 26: P + "VCAP4", 28: P + "VCAP1",
              30: P + "VCAP2", 55: P + "VCAP3", 27: None, 29: None, 31: "GND", 41: "GND", 42: "GND", 44: "GND",
-             45: "GND", 46: "GND", 34: "MOSI", 35: P + "PWDN", 36: "ADS_RESET", 38: "ADS_START",
+             45: "GND", 46: "GND", 34: "MOSI", 35: "AVDD_EN", 36: "ADS_RESET", 38: "ADS_START",
              39: "CS_" + X, 40: "SCLK", 43: P + "DOUT", 47: "DRDY_" + X, 60: None, 64: P + "WCT"}
     an.update(fixed)
     if A:
-        an.update({37: "A_CLKO", 52: "+3V3", 61: "RLDINV", 62: "A_RLDOUT", 63: "A_RLDOUT"})
+        an.update({37: "A_CLKO", 52: "DVDD", 61: "RLDINV", 62: "A_RLDOUT", 63: "A_RLDOUT"})
     else:
         an.update({37: "ADS_CLK", 52: "GND", 61: "B_RLDINV", 62: "AVDD", 63: None})
     u = d.add("ADS1298", f"U{b}", XA, YA, 0, an, ref_at=(205.74, 90.3, "left"), val_at=(205.74, 92.9, "left"))
@@ -359,7 +375,7 @@ def afe_sheet(s, X):
     d.tie(u, [48, 50], 2.54, at=0)
     d.tie(u, [20, 23, 32, 57, 58, 53, 33, 49, 51, 41, 42, 44, 45, 46, 31], 2.54, at=7)
     # signal pins on the right
-    shape = {39: "input", 40: "input", 34: "input", 47: "output", 38: "input", 36: "input"}
+    shape = {39: "input", 40: "input", 34: "input", 47: "output", 38: "input", 36: "input", 35: "input"}
     for pin in (39, 40, 34, 43, 47, 38, 36, 37, 35, 52, 64, 24, 25, 28, 30, 55, 26):
         d.stub(u, pin, 5.08, shape.get(pin, "passive"))
     if A:
@@ -411,7 +427,7 @@ def afe_sheet(s, X):
     sup = [("AVDD", [("C1U", f"C{c}"), ("C100N", f"C{c + 1}")], "AVDD pins\n19, 21, 22"),
            ("AVDD", [("C1U", f"C{c + 2}"), ("C100N", f"C{c + 3}")], "AVDD pins\n56, 59"),
            ("AVDD", [("C1U", f"C{c + 4}"), ("C100N", f"C{c + 5}")], "AVDD1\npin 54"),
-           ("+3V3", [("C1U", f"C{c + 6}"), ("C100N", f"C{c + 7}")], "DVDD pins\n48, 50")]
+           ("DVDD", [("C1U", f"C{c + 6}"), ("C100N", f"C{c + 7}")], "DVDD pins\n48, 50")]
     d.bank(248.92, 109.22, sup, 12.7)
     s.text("Reference and internal nodes", (246.38, 128.5), 1.5, bold=True)
     ref = [(P + "VREFP", [("C10U", f"C{c + 8}"), ("C100N", f"C{c + 9}")], "VREFP to\nVREFN"),
@@ -427,8 +443,9 @@ def afe_sheet(s, X):
     # ---- housekeeping parts
     y1, y2, y3 = 190.5, 210.82, 231.14
     s.text("Straps and series parts", (246.38, 179.0), 1.5, bold=True)
-    d.two("R10K", f"R{b + 20}", 254.0, y1, "V", "+3V3", P + "PWDN")
-    s.text("PWDN held high\n(10k, as on TI's\nevaluation board)", (263.5, y1 - 4.5), 1.0, justify="left top")
+    d.two("R100K", f"R{b + 20}", 254.0, y1, "H", "DVDD", "CS_" + X, 5.08)
+    s.text("chip select pull-up (the MCU pin floats in reset).\nPWDN is on AVDD_EN: the converter is powered\n"
+           "down whenever the analog rail is off", (243.84, y1 + 3.3), 1.0, justify="left top")
     d.two("R33", f"R{b + 21}", 299.72, y1, "H", P + "DOUT", "MISO", 5.08)
     s.text("series resistor at the data output", (287.0, y1 + 5.0), 1.0, justify="left top")
     d.two("R0", f"R{b + 22}", 353.06, y1, "H", P + "SHIELD", "GND", 5.08)
@@ -490,13 +507,14 @@ def build(directory, date):
               (25.4, 36.0), 1.3, justify="left top")
     root.text("Rails\n"
               "  VBAT   battery node = XIAO BAT+ pad (charger output), 3.0 to 4.2 V\n"
-              "  +3V3   XIAO regulator output; converter digital supply (DVDD)\n"
+              "  +3V3   XIAO regulator output\n"
+              "  DVDD   converter digital supply = +3V3 through link R21\n"
               "  AVDD   3.0 V from U2, converter analog supply; off while USB is present\n\n"
               "XIAO pins\n"
-              "  D0  CS_A        D6   ADS_START\n"
+              "  D0  CS_A        D6   not used (no land)\n"
               "  D1  CS_B        D7   ADS_RESET\n"
-              "  D2  DRDY_A      D8   AFE_EN\n"
-              "  D3  DRDY_B      D9   MOTOR\n"
+              "  D2  DRDY_A      D8   AFE_EN (also the converters' PWDN)\n"
+              "  D3  ADS_START   D9   MOTOR\n"
               "  D4  MISO        D10  MOSI\n"
               "  D5  SCLK\n\n"
               "Open questions are in OPEN.md.", (160.0, 60.96), 1.3, justify="left top")

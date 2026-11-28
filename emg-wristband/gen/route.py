@@ -43,21 +43,19 @@ def main():
                                              for qx, qy in ((qx0, qy0), (qx1, qy0), (qx1, qy1), (qx0, qy1))]))
         board.Add(k)
     # The router keeps copper off the outline only by the track clearance, so give it an outline
-    # drawn 0.4 mm inside the real one (this copy of the board is not saved).
-    bb = board.GetBoardEdgesBoundingBox()
+    # drawn 0.45 mm inside the real one, notch included (this copy of the board is not saved).
     for d in list(board.GetDrawings()):
         if d.GetLayer() == pcbnew.Edge_Cuts:
-            board.Remove(d)
-    m = pcbnew.FromMM(0.45)
-    x0, y0, x1, y1 = bb.GetLeft() + m, bb.GetTop() + m, bb.GetRight() - m, bb.GetBottom() - m
-    for a, b in (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))):
-        s = pcbnew.PCB_SHAPE(board)
-        s.SetShape(pcbnew.SHAPE_T_SEGMENT)
-        s.SetStart(pcbnew.VECTOR2I(*a))
-        s.SetEnd(pcbnew.VECTOR2I(*b))
-        s.SetLayer(pcbnew.Edge_Cuts)
-        s.SetWidth(pcbnew.FromMM(0.1))
-        board.Add(s)
+            board.Delete(d)
+    pts = B.outline(0.45)
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        s_ = pcbnew.PCB_SHAPE(board)
+        s_.SetShape(pcbnew.SHAPE_T_SEGMENT)
+        s_.SetStart(B.V(*a))
+        s_.SetEnd(B.V(*b))
+        s_.SetLayer(pcbnew.Edge_Cuts)
+        s_.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(s_)
     assert pcbnew.ExportSpecctraDSN(board, dsn), "DSN export failed"
     # Ground is not autorouted: its pads are joined by the pours and planes (gen/finish.py).
     text = open(dsn).read()

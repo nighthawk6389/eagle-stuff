@@ -292,6 +292,10 @@
       },
       {
         "netclass": "Power",
+        "pattern": "DVDD"
+      },
+      {
+        "netclass": "Power",
         "pattern": "GND"
       },
       {

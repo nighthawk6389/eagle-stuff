@@ -637,6 +637,12 @@
 		(uuid "3fcb0891-ca6f-5d2c-ba7c-7a4175f3d95b")
 	)
 	(junction
+		(at 76.2 99.06)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "8419698c-1d32-5e86-9159-7d6632478d7d")
+	)
+	(junction
 		(at 81.28 48.26)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -707,7 +713,7 @@
 		(uuid "d47207e5-815b-565d-a1e9-d9bccb967695")
 	)
 	(wire
-		(pts (xy 45.72 99.06) (xy 46.99 99.06))
+		(pts (xy 45.72 99.06) (xy 55.88 99.06))
 		(stroke (width 0) (type default))
 		(uuid "1e96b9de-5ef6-5740-bfcb-40472ee7a771")
 	)
@@ -717,47 +723,47 @@
 		(uuid "202a7a74-c9de-5378-893b-520871243924")
 	)
 	(wire
-		(pts (xy 46.99 99.06) (xy 55.88 99.06))
+		(pts (xy 46.99 121.92) (xy 50.8 121.92))
 		(stroke (width 0) (type default))
 		(uuid "3d6de36f-4bb9-5460-afa7-a9a79d80bb0d")
 	)
 	(wire
-		(pts (xy 46.99 121.92) (xy 50.8 121.92))
+		(pts (xy 50.8 121.92) (xy 59.69 121.92))
 		(stroke (width 0) (type default))
 		(uuid "bd1c0bb5-cb8f-5536-97ad-137781b720b8")
 	)
 	(wire
-		(pts (xy 50.8 121.92) (xy 59.69 121.92))
+		(pts (xy 55.88 99.06) (xy 76.2 99.06))
 		(stroke (width 0) (type default))
 		(uuid "2d490338-7db6-52db-84e3-4cf6ada0ffef")
 	)
 	(wire
-		(pts (xy 55.88 99.06) (xy 76.2 99.06))
+		(pts (xy 59.69 121.92) (xy 66.04 121.92))
 		(stroke (width 0) (type default))
 		(uuid "75fc592e-1f0e-51af-90e2-662bb78b5c24")
 	)
 	(wire
-		(pts (xy 59.69 121.92) (xy 66.04 121.92))
+		(pts (xy 66.04 109.22) (xy 66.04 121.92))
 		(stroke (width 0) (type default))
 		(uuid "cb4f8e40-bd41-59a7-b72c-2fda2e161d28")
 	)
 	(wire
-		(pts (xy 66.04 109.22) (xy 66.04 121.92))
+		(pts (xy 66.04 109.22) (xy 68.58 109.22))
 		(stroke (width 0) (type default))
 		(uuid "7dba91b2-0151-52ee-94a4-a30b524d299b")
 	)
 	(wire
-		(pts (xy 66.04 109.22) (xy 68.58 109.22))
+		(pts (xy 76.2 48.26) (xy 81.28 48.26))
 		(stroke (width 0) (type default))
 		(uuid "db561ded-8024-591d-8ab7-373012203020")
 	)
 	(wire
-		(pts (xy 76.2 48.26) (xy 81.28 48.26))
+		(pts (xy 76.2 99.06) (xy 76.2 104.14))
 		(stroke (width 0) (type default))
 		(uuid "c8634d11-3d59-597f-9dd8-6325b6cf193d")
 	)
 	(wire
-		(pts (xy 76.2 99.06) (xy 76.2 104.14))
+		(pts (xy 76.2 99.06) (xy 83.82 99.06))
 		(stroke (width 0) (type default))
 		(uuid "c26fb9e3-23cb-55b2-a720-01402e1e5561")
 	)
@@ -1172,10 +1178,15 @@
 			)
 		)
 	)
-	(label "AVDD_EN"
+	(global_label "AVDD_EN"
+		(shape passive)
 		(at 99.06 53.34 180)
-		(effects (font (size 1.27 1.27)) (justify right bottom))
-		(uuid "783545c3-0248-581c-8c79-a714ad41d95b")
+		(effects (font (size 1.27 1.27)) (justify right))
+		(uuid "40f91624-84b4-542a-b8eb-8dc2ecf8f718")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 99.06 53.34 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
 	)
 	(symbol
 		(lib_id "emgpod:GND")
@@ -1311,15 +1322,15 @@
 		(dnp no)
 		(uuid "23a718cf-7f20-5abb-88da-0701b4d11d15")
 		(property "Reference" "R1" (at 41.91 97.11 90) (effects (font (size 1.27 1.27))))
-		(property "Value" "10k" (at 41.91 101.01 90) (effects (font (size 1.27 1.27))))
+		(property "Value" "1k" (at 41.91 101.01 90) (effects (font (size 1.27 1.27))))
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 41.91 99.06 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" "" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(property "Description" "" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "LCSC" "C25744" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "0402WGF1002TCE" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C11702" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0402WGF1001TCE" (at 41.91 99.06 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "66723225-16bb-5a8e-98c1-272535f761e7"))
 		(pin "2" (uuid "bba4aa04-4a3d-5ba6-8582-1ecf2ce50b9f"))
 		(instances
@@ -1331,10 +1342,15 @@
 			)
 		)
 	)
-	(label "AVDD_EN"
-		(at 46.99 99.06 0)
-		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "6901d9b5-2d47-5b46-afe5-6970ac518a85")
+	(global_label "AVDD_EN"
+		(shape output)
+		(at 83.82 99.06 0)
+		(effects (font (size 1.27 1.27)) (justify left))
+		(uuid "9df53135-54dd-5c1f-9941-05780c5f7ba5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 83.82 99.06 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
 	)
 	(symbol
 		(lib_id "emgpod:R")
@@ -1346,15 +1362,15 @@
 		(dnp no)
 		(uuid "e2b5b9c4-9930-5ec9-9b14-6431dddd67f6")
 		(property "Reference" "R2" (at 58.18 101.6 0) (effects (font (size 1.27 1.27)) (justify left)))
-		(property "Value" "100k" (at 58.18 104.14 0) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "10k" (at 58.18 104.14 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 55.88 102.87 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" "" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(property "Description" "" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "LCSC" "C25741" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "0402WGF1003TCE" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C25744" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "0402WGF1002TCE" (at 55.88 102.87 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "0d5183be-160d-52ea-a09b-4363a920a416"))
 		(pin "2" (uuid "3768475b-1d22-5e02-ab7f-8f757aa553eb"))
 		(instances
@@ -1598,7 +1614,7 @@
 			)
 		)
 	)
-	(text "VBUS is the XIAO 5V pin, which Seeed wires straight to the USB connector.\nWith USB present Q1 shorts AVDD_EN to ground; R1 keeps the MCU pin from\noverriding it, so firmware cannot turn the analog rail on.\nTrip point: Q1 turns on for VBUS between 1.3 V and 2.9 V\n(Vgs(th) 0.65 to 1.45 V, AO3400A datasheet; R3/R4 halve VBUS).\nR2 holds the rail off while the MCU pin floats (reset, bootloader).\nU2 needs EN above 1.2 V to run: 3.3 V x 100k/110k = 3.0 V."
+	(text "VBUS is the XIAO 5V pin, which Seeed wires straight to the USB connector.\nWith USB present Q1 shorts AVDD_EN to ground; R1 keeps the MCU pin from\noverriding it, so firmware cannot turn the analog rail on.\nTrip point: Q1 turns on for VBUS between 1.3 V and 2.9 V\n(Vgs(th) 0.65 to 1.45 V, AO3400A datasheet; R3/R4 halve VBUS).\nR2 holds the rail off while the MCU pin floats (reset, bootloader).\nAVDD_EN is also the PWDN input of both converters, so they are powered down\nwhenever the analog rail is off. That sets R1 and R2 (SBAS459K digital inputs):\nhigh must reach 0.8 x DVDD, here 10k/11k = 0.91 x DVDD (3.0 V; U2 needs 1.2 V);\nlow must hold against the two inputs' 10 uA each: 20 uA x 10k = 0.2 V."
 		(exclude_from_sim no)
 		(at 25.4 140 0)
 		(effects (font (size 1.1 1.1)) (justify left top))

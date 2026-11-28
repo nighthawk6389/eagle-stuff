@@ -107,7 +107,7 @@
 		(effects (font (size 1.3 1.3)) (justify left top))
 		(uuid "3bb64cc5-ecf9-5d3c-98a1-22e506f08593")
 	)
-	(text "Rails\n  VBAT   battery node = XIAO BAT+ pad (charger output), 3.0 to 4.2 V\n  +3V3   XIAO regulator output; converter digital supply (DVDD)\n  AVDD   3.0 V from U2, converter analog supply; off while USB is present\n\nXIAO pins\n  D0  CS_A        D6   ADS_START\n  D1  CS_B        D7   ADS_RESET\n  D2  DRDY_A      D8   AFE_EN\n  D3  DRDY_B      D9   MOTOR\n  D4  MISO        D10  MOSI\n  D5  SCLK\n\nOpen questions are in OPEN.md."
+	(text "Rails\n  VBAT   battery node = XIAO BAT+ pad (charger output), 3.0 to 4.2 V\n  +3V3   XIAO regulator output\n  DVDD   converter digital supply = +3V3 through link R21\n  AVDD   3.0 V from U2, converter analog supply; off while USB is present\n\nXIAO pins\n  D0  CS_A        D6   not used (no land)\n  D1  CS_B        D7   ADS_RESET\n  D2  DRDY_A      D8   AFE_EN (also the converters' PWDN)\n  D3  ADS_START   D9   MOTOR\n  D4  MISO        D10  MOSI\n  D5  SCLK\n\nOpen questions are in OPEN.md."
 		(exclude_from_sim no)
 		(at 160 60.96 0)
 		(effects (font (size 1.3 1.3)) (justify left top))

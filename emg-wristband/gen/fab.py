@@ -32,7 +32,7 @@ ROTATION_FIX = {}
 
 # JLCPCB wants the centre of the part. KiCad's library footprints have their origin there; Seeed's XIAO
 # footprint has it at a corner of the module, so for it the centre of the body outline is written.
-BODY_CENTRE = ("XIAO-nRF52840-SMD-noNFC", "XIAO-nRF52840-SMD")
+BODY_CENTRE = ("XIAO-nRF52840-SMD-pod", "XIAO-nRF52840-SMD")
 
 
 def check_nets(board):
@@ -52,7 +52,7 @@ def check_nets(board):
     return n
 
 
-QUIET_NETS = ("GND", "AVDD", "+3V3", "VBAT", "BIAS", "RLDINV", "A_RLDOUT", "B_RLDINV", "A_SHIELD", "B_SHIELD")
+QUIET_NETS = ("GND", "AVDD", "+3V3", "DVDD", "VBAT", "BIAS", "RLDINV", "A_RLDOUT", "B_RLDINV", "A_SHIELD", "B_SHIELD")
 
 
 def check_quiet(board):
@@ -112,6 +112,52 @@ def check_quiet(board):
     return inside, sorted(near)
 
 
+def check_planes(board):
+    """Layers 2 and 3 must be filled between the vias of the rows under the converters and the strip
+    connectors, where via clearances once merged into slots. Returns the points that are not."""
+    def filled(layer, x, y):
+        pt = pcbnew.VECTOR2I(pcbnew.FromMM(B.OX + x), pcbnew.FromMM(B.OY + y))
+        return any(z.HitTestFilledArea(layer, pt) for z in board.Zones() if not z.GetIsRuleArea() and z.GetLayer() == layer)
+
+    fps = {f.GetReference(): f for f in board.GetFootprints()}
+    holes = []
+    for X, b in (("A", 100), ("B", 200)):
+        jy = pcbnew.ToMM(next(p for p in fps[f"J{b}"].Pads() if p.GetNumber() == "3").GetPosition().y) - B.OY
+        xs = [round(B.BX[X] - 3.75 + 0.5 * k, 3) for k in range(16)]
+        for k in range(1, 15):                              # the point half-way between two vias of one row
+            pts = []
+            if B.chip_via_y(k - 1) == B.chip_via_y(k + 1):
+                pts.append((xs[k], B.chip_via_y(k - 1)))
+            if B.TAP_ROW[k - 1] == B.TAP_ROW[k + 1]:
+                pts.append((xs[k], round(jy + B.TAP[B.TAP_ROW[k - 1]], 3)))
+            for x, y in pts:
+                for layer in (pcbnew.In1_Cu, pcbnew.In2_Cu):
+                    if not filled(layer, x, y):
+                        holes.append((board.GetLayerName(layer), x, y))
+    return holes
+
+
+def check_vias(board):
+    """How close via rings come to the pads on the same side. Returns counts (gap < 0.15 mm, gap < 0.2 mm)."""
+    import math
+    pads = [p for f in board.GetFootprints() for p in f.Pads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+    boxes = [(p.GetBoundingBox(), p.IsOnLayer(pcbnew.F_Cu)) for p in pads]
+    tight, close = 0, 0
+    for v in board.GetTracks():
+        if not isinstance(v, pcbnew.PCB_VIA):
+            continue
+        c, r = v.GetPosition(), v.GetWidth(pcbnew.F_Cu) / 2
+        best = 1e12
+        for bb, _ in boxes:
+            dx = max(bb.GetLeft() - c.x, 0, c.x - bb.GetRight())
+            dy = max(bb.GetTop() - c.y, 0, c.y - bb.GetBottom())
+            best = min(best, math.hypot(dx, dy) - r)
+        gap = pcbnew.ToMM(best)
+        tight += gap < 0.149
+        close += gap < 0.199
+    return tight, close
+
+
 def drc():
     """Full DRC, every severity. Returns (errors, warnings, unconnected)."""
     import json
@@ -157,13 +203,17 @@ def main():
                         "-o", os.path.join(ROOT, "out", f"board-{side}.png"), PCB], capture_output=True)
     pads = check_nets(board)
     inside, near = check_quiet(board)
+    holes = check_planes(board)
+    tight, close = check_vias(board)
     err, warn, open_ = drc()
     print(f"{len(os.listdir(g))} gerber and drill files, {len(rows)} placements, {pads} pads on the right nets")
     print(f"DRC: {err} errors, {warn} warnings, {open_} unconnected")
     print(f"router tracks inside the areas kept for the input lines: {len(inside)}" + (f" {inside[:6]}" if inside else ""))
     print("other signals nearest to an input line on the same layer (mm between centre lines, complete up to 1 mm): "
           + (", ".join(f"{net} {d} at ({x}, {y})" for d, net, x, y in near[:6]) or "none"))
-    return 1 if (err or open_ or inside) else 0
+    print(f"gaps in the planes between the vias of a row: {len(holes)}" + (f" {holes[:6]}" if holes else ""))
+    print(f"vias with their ring closer than 0.15 mm to a pad: {tight}; closer than 0.2 mm: {close}")
+    return 1 if (err or open_ or inside or holes) else 0
 
 
 if __name__ == "__main__":

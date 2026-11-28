@@ -50,7 +50,8 @@ column is what `gen/board.py` uses.
 | Plated pad hole to track 0.28 mm (0.35 mm recommended); pad annular ring 0.2 mm | Only the two motor wire pads (0.7 mm hole, 1.7 mm pad, measured on the board): ring 0.5 mm, so tracks stay 0.63 mm from the hole |
 | Copper to a routed board edge 0.2 mm | 0.3 mm |
 | SMD pad to pad, different nets, 0.15 mm; pad to track 0.1 mm | Closest pads are the ESD arrays' at 0.15 mm (library footprint); pad to track 0.127 mm |
-| Inner layer: via hole to copper 0.2 mm | Planes keep 0.2 mm from the via pad, 0.3 mm from the hole |
+| Inner layer: via hole to copper 0.2 mm | Planes keep 0.15 mm from the via pad, 0.25 mm from the hole (0.2 mm from the pad merged the clearances of neighbouring vias into slots) |
+| Silkscreen: 1.0 mm text height, 0.15 mm line (as the reviewer read the page; I did not re-read it) | All text 1.0 mm or 1.5 mm high, strokes 0.15 mm or more |
 | Same-net track spacing 0.25 mm | **Not checked.** KiCad has no rule for it and the autorouted tracks were not inspected for it |
 
 The page states no default via covering for 4-layer boards. The Gerbers have no solder-mask openings
@@ -66,10 +67,14 @@ From jlcpcb.com/capabilities/pcb-assembly-capabilities: Economic assembly takes 
 - Hirose FH12 catalogue p. 10 (land drawing for the 0.5 mm bottom-contact type): shows the contact and
   mounting lands only, with no area marked as closed to copper under the body. The tap tracks and
   vias of the electrode lines run there.
-- The XIAO footprint on the board is `XIAO-nRF52840-SMD-noNFC`: Seeed's file with pads 21 and 22 (the
-  two NFC pads, unconnected in this design) and its silkscreen outline removed. The outline crossed
-  the module's own pads and the board edge; `gen/finish.py` draws two corner marks instead. The other
-  20 pads are untouched. Seeed's unchanged file is kept beside it.
+- The XIAO footprint on the board is `XIAO-nRF52840-SMD-pod`: Seeed's file without pads 21 and 22 (the
+  two NFC pads, unconnected here), without pad 7 (D6, which would lie in the notch) and without its
+  silkscreen outline. The other 19 pads are untouched. Seeed's unchanged file is kept beside it.
+- Where things are on the XIAO, from Seeed's v1.2 board file (a KiCad 10 file, read as text because
+  KiCad 9 cannot open it), moved by (-110.03, -95.114) mm into this board's coordinates: chip antenna
+  ANT1 (AN3216, 3.2 x 1.6 mm) centred at (29.07, 8.09); NFC pads 2.0 x 1.0 mm at (29.26, 13.70) and
+  (29.26, 15.61); USB shell legs, plated slots of about 1.8 x 0.9 mm, at (47.86, 5.59), (47.86, 14.19),
+  (43.66, 5.59) and (43.66, 14.19). The notch and the keep-outs in `gen/board.py` come from these.
 - `TestPoint_Pad_D1.0mm_bare` in the project library is KiCad's `TestPoint_Pad_D1.0mm` without its
   silkscreen ring, so the net labels fit between the pads.
 - Freerouting 2.1.0 (github.com/freerouting/freerouting) did the autorouted part of the board.

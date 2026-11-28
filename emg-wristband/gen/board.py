@@ -27,21 +27,30 @@ CLEAR = 0.127                   # copper clearance (5 mil); JLCPCB's 4-layer min
 TRACK = 0.15
 FINE = 0.127                    # the fixed electrode routes, which pass between vias
 VIA_D, VIA_DRILL = 0.5, 0.3
-POWER_NETS = ["VBAT", "AVDD", "+3V3", "GND", "MOT_P", "MOT_N", "VBUS"]
+POWER_NETS = ["VBAT", "AVDD", "+3V3", "DVDD", "GND", "MOT_P", "MOT_N", "VBUS"]
 
 # block centres: converter A on the left half, converter B on the right half
 BX = {"A": 12.25, "B": 36.75}
 CONN_Y = None                   # set once the connector footprint has been measured
 CHIP_Y = 29.9
-SPLIT_Y = 27.6                  # layer 3: +3V3 above this line, AVDD below (DVDD pins are above it)
+SPLIT_Y = 26.0                  # layer 3: DVDD above this line, AVDD below. The whole fan-out (first lane at
+                                # CHIP_Y - 3.2) has to lie over AVDD; the DVDD vias sit just above the line.
 ROW1, ROW2 = 39.75, 37.7         # resistor-array rows (centre lines)
 FAN_PITCH = 1.2                  # filter-capacitor pitch = spacing of the fan-out lanes under the converter
 FAN_TOP = 2.8                    # first turn row of the fan, below the chip centre
-ESD_X = 10.15                    # ESD arrays: distance of their column from the block centre line
-ESD_N, ESD_S, ESD_BIAS = 41.0, 46.5, 37.75
+ESD_X = 10.0                     # ESD arrays: distance of their column from the block centre line
+ESD_N, ESD_S, ESD_BIAS = 40.9, 46.6, 37.75
+ESD_END, ESD_MID, ESD_LANE = 1.175, 1.56, 1.675    # array centre to: via beside an end pad, via beyond a
+                                                   # middle pad (both 0.25 mm clear of the pad), outer lane
 TAP = {"A": 1.6, "B": 2.5, "C": 3.4, "D": 4.3}     # tap-via rows under the strip connector, below the pad row
 TAP_ROW = "ABABDCDC" "DCDCBABA"  # row of the tap via of line k: each array's four lines leave as one bundle
 XIAO_X0, XIAO_Y0 = 28.0, 1.0
+NOTCH = (25.0, 32.0, 12.4)       # x from, x to, depth: the board is cut away under and in front of the XIAO's
+                                 # chip antenna (centre 29.1, 8.1 by Seeed's coordinate sheet), open to the top edge
+# Bare metal on the XIAO's underside that has no land here (Seeed's v1.2 board file, moved to board mm):
+# the two NFC pads and the four USB shell legs, each with a margin. No top copper and no via under them.
+MODULE_METAL = [(27.75, 12.85, 30.80, 16.45), (46.67, 13.45, 49.05, 14.93), (46.67, 4.85, 49.05, 6.33),
+                (42.44, 13.43, 44.87, 14.95), (42.44, 4.83, 44.87, 6.35)]
 BOTTOM = {"TP19", "TP20", "TP21", "TP22"}      # bare pads on the back; no parts are assembled there
 
 
@@ -82,6 +91,12 @@ def quiet_zones():
     return zones
 
 
+def outline(inset=0.0):
+    """Corners of the board outline, clockwise from the top-left, optionally drawn inside by inset."""
+    i, (n0, n1, nd) = inset, NOTCH
+    return [(i, i), (n0 - i, i), (n0 - i, nd + i), (n1 + i, nd + i), (n1 + i, i), (W - i, i), (W - i, H - i), (i, H - i)]
+
+
 def load(fp_id):
     lib, name = fp_id.split(":")
     path = os.path.join(POD, "lib", "emgpod.pretty") if lib == "emgpod" else KL + lib + ".pretty"
@@ -94,7 +109,7 @@ def load(fp_id):
 def placement():
     """ref -> (x, y, rotation)."""
     P = {}
-    # ---- XIAO: USB end at the right edge, antenna end towards the middle of the top edge
+    # ---- XIAO: USB end at the right edge, antenna end over the notch in the top edge
     P["U1"] = (XIAO_X0, XIAO_Y0, 270)
     # ---- battery connector, opening towards the top edge
     P["J1"] = (6.0, 5.6, 180)
@@ -108,15 +123,25 @@ def placement():
     P["U2"] = (21.2, 16.9, 0)
     P["C1"] = (18.4, 16.9, 270)
     P["C2"] = (23.9, 16.9, 270)
-    for i, r in enumerate(["R1", "R2", "R3", "R4", "C3"]):
+    for i, r in enumerate(["R3", "R4", "C3"]):          # VBUS divider of the interlock
         P[r] = (11.6 + 2.1 * i, 14.0, 0)
+    P["R1"] = (32.6, 20.45, 270)                      # enable divider, right below the XIAO's AFE_EN pad
+    P["R2"] = (33.8, 20.45, 90)
     P["Q1"] = (14.2, 17.0, 0)
-    P["R20"] = (25.0, 21.6, 90)
-    # ---- test points
-    grid = ["TP10", "TP11", "TP12", "TP13", "TP14", "TP15", "TP16", "TP17", "TP18", "TP3"]
+    P["R20"] = (24.7, 21.6, 90)
+    P["R23"] = (26.0, 21.6, 90)                       # SCLK pull-down
+    P["R22"] = (27.3, 21.6, 90)                       # START pull-down
+    P["R21"] = (40.6, 20.6, 0)                        # link from the XIAO's 3V3 pin to DVDD
+    # ---- test points. The shared SPI lines have theirs on the left, where the lines pass on their way to
+    #      converter A; what only exists on the right (3V3, converter B's select and DRDY) is tested there,
+    #      so that nothing crosses the corridor below the notch just to reach a test point.
+    grid = ["TP10", "TP11", "TP12", "TP13", "TP15", "TP17", "TP18"]
     for i, r in enumerate(grid):
-        P[r] = (11.6 + 2.2 * (i % 7), 9.6 + 2.2 * (i // 7), 0)
-    P["TP1"] = (2.0, 13.0, 0)
+        P[r] = (11.6 + 2.4 * (i % 5), 9.4 + 2.6 * (i // 5), 0)
+    P["TP3"] = (42.9, 20.4, 0)
+    P["TP16"] = (29.2, 22.0, 0)
+    P["TP14"] = (31.3, 22.0, 0)
+    P["TP1"] = (2.0, 12.8, 0)
     P["TP4"] = (2.0, 15.4, 0)
     P["TP5"] = (9.3, 17.4, 0)
     P["TP2"] = (5.5, 17.4, 0)
@@ -125,7 +150,7 @@ def placement():
     P["TP20"] = (47.0, 13.6, 0)
     P["TP21"] = (44.5, 6.2, 0)
     P["TP22"] = (44.5, 13.6, 0)
-    P["TP30"] = (2.0, 17.8, 0)
+    P["TP30"] = (2.0, 18.0, 0)
     P["TP31"] = (BX["A"] - 7.75, 37.3, 0)            # bias output: beside the bias parts, below converter A
     # ---- the two converter blocks, identical
     for X, b in (("A", 100), ("B", 200)):
@@ -153,9 +178,10 @@ def placement():
         P[f"C{c + 8}"] = (bx + 7.7, cy + 1.0, 270)       # 10 uF 0603 on VREFP, pad 1 next to pin 24
         P[f"C{c + 10}"] = (bx + 9.2, cy - 6.5, 90)         # 22 uF tantalum on VCAP1, positive pad at the bottom
         # digital-side resistors above the chip
-        P[f"R{b + 21}"] = (bx - 1.3, cy - 8.1, 90)         # DOUT series
-        P[f"R{b + 23}"] = (bx + 0.2, cy - 8.1, 90)         # clock series (A) / pull-down (B)
-        P[f"R{b + 20}"] = (bx + 1.7, cy - 8.1, 270)        # PWDN pull-up
+        # each of these sits straight above the converter pin it belongs to (43 DOUT, 39 CS, 37 CLK)
+        P[f"R{b + 21}"] = (bx - 1.25, cy - 8.1, 90)        # DOUT series
+        P[f"R{b + 20}"] = (bx + 0.75, cy - 8.1, 270)       # chip-select pull-up
+        P[f"R{b + 23}"] = (bx + 2.0, cy - 8.1, 90)         # clock series (A) / pull-down (B)
         # ESD arrays in a column at each end of the connector, their capacitors between them;
         # the bias array sits above the left column
         for side, north, south in ((-1, 4, 3), (1, 1, 2)):
@@ -208,19 +234,22 @@ def main():
     for n in POWER_NETS:
         ns.SetNetclassPatternAssignment(n, "Power")
 
-    # outline, 1 mm corner radius
+    # outline: 1 mm radius at the four corners, and the notch under the antenna with 1 mm inner radii
     r = 1.0
-    pts = [(r, 0), (W - r, 0), (W, r), (W, H - r), (W - r, H), (r, H), (0, H - r), (0, r)]
-    for i in range(0, 8, 2):
+    n0, n1, nd = NOTCH
+    segs = [((r, 0), (n0, 0)), ((n0, 0), (n0, nd - r)), ((n0 + r, nd), (n1 - r, nd)), ((n1, nd - r), (n1, 0)),
+            ((n1, 0), (W - r, 0)), ((W, r), (W, H - r)), ((W - r, H), (r, H)), ((0, H - r), (0, r))]
+    for a, b in segs:
         s = pcbnew.PCB_SHAPE(board)
         s.SetShape(pcbnew.SHAPE_T_SEGMENT)
-        s.SetStart(V(*pts[i]))
-        s.SetEnd(V(*pts[i + 1]))
+        s.SetStart(V(*a))
+        s.SetEnd(V(*b))
         s.SetLayer(pcbnew.Edge_Cuts)
         s.SetWidth(FromMM(0.1))
         board.Add(s)
+    # arcs run clockwise on the screen from their start point
     for (cx, cy), (sx, sy) in [((W - r, r), (W - r, 0)), ((W - r, H - r), (W, H - r)), ((r, H - r), (r, H)),
-                               ((r, r), (0, r))]:
+                               ((r, r), (0, r)), ((n0 + r, nd - r), (n0 + r, nd)), ((n1 - r, nd - r), (n1, nd - r))]:
         s = pcbnew.PCB_SHAPE(board)
         s.SetShape(pcbnew.SHAPE_T_ARC)
         s.SetCenter(V(cx, cy))
@@ -371,13 +400,13 @@ def main():
         #      gaps between the fan-out lanes. (pins, via position from the chip centre, extra corner)
         chip_vias = [
             ((49,), (-4.05, -3.75), None),
-            ((50,), (-3.25, -3.70), (-3.70, -3.25)),
+            ((48,), (-3.75, -4.45), None),
+            ((50,), (-3.75, -4.45), [(-3.70, -3.25), (-3.25, -3.70), (-3.25, -4.00)]),
             ((51,), (-4.05, -2.60), None),
             ((53,), (-4.05, -1.40), None),
             ((54, 56), (-4.05, -0.20), None),
             ((57, 58), (-4.05, 1.00), None),
             ((59,), (-4.05, 2.20), None),
-            ((48,), (-3.75, -4.45), None),
             ((44, 45, 46), (-2.25, -4.05), None),
             ((41, 42), (-0.50, -4.05), None),
             ((33,), (3.75, -4.45), None),
@@ -385,8 +414,9 @@ def main():
             ((23, 25), (4.05, -0.20), None),
             ((21, 22), (4.05, 1.00), None),
             ((20,), (4.05, 2.20), None),
-            ((17, 18, 19), (3.25, 2.20), (3.80, 2.75)),
+            ((17, 18, 19), (3.25, 2.20), [(3.80, 2.75)]),
         ]
+        made = set()
         for pins, (vx, vy), corner in chip_vias:
             netname = design.NET[(f"U{b}", str(pins[-1]))]
             vp = (round(bx + vx, 3), round(CHIP_Y + vy, 3))
@@ -403,11 +433,32 @@ def main():
                 knees.append(knee)
             if corner:                                      # the pins are joined, the last one leads to the via
                 path(knees, netname, width=FINE)
-                path([knees[-1], (round(bx + corner[0], 3), round(CHIP_Y + corner[1], 3)), vp], netname, width=FINE)
+                path([knees[-1]] + [(round(bx + cx_, 3), round(CHIP_Y + cy_, 3)) for cx_, cy_ in corner] + [vp],
+                     netname, width=FINE)
             else:
                 for knee in knees:
                     track(knee, vp, netname, width=FINE)
-            via(vp, netname)
+            if vp not in made:                              # pins 48 and 50 share theirs
+                via(vp, netname)
+                made.add(vp)
+
+        # DVDD bypass capacitors: joined, with their own via to the DVDD plane
+        d1, d2 = pad_xy(f"C{b + 26}", 1), pad_xy(f"C{b + 27}", 1)
+        dvdd = design.NET[(f"U{b}", "48")]
+        expect(f"C{b + 26}", 1, dvdd), expect(f"C{b + 27}", 1, dvdd)
+        track(d1, d2, dvdd, width=0.2)
+        dv = (round(d1[0] + 0.92, 3), d1[1])
+        assert dv[1] < SPLIT_Y - 0.6, dv
+        track(d1, dv, dvdd, width=0.2)
+        via(dv, dvdd)
+
+        # the three resistors above the converter: a straight link from each one's pin
+        for pin, ref, num in ((43, f"R{b + 21}", 1), (39, f"R{b + 20}", 2), (37, f"R{b + 23}", 1)):
+            q, rp = pad_xy(f"U{b}", pin), pad_xy(ref, num)
+            netname = design.NET[(f"U{b}", str(pin))]
+            expect(ref, num, netname)
+            assert rp[1] < q[1] and abs(rp[0] - q[0]) < 0.3, (ref, rp, q)
+            path([q, (q[0], round(rp[1] + 0.25 + abs(rp[0] - q[0]), 3)), (rp[0], round(rp[1] + 0.25, 3)), rp], netname)
 
         # CLKSEL (pin 52) is strapped: to the via of ground pin 51, or to that of supply pin 50
         q = pad_xy(f"U{b}", 52)
@@ -440,8 +491,9 @@ def main():
             at = {n: pad_xy(ref, n) for n in range(1, 7)}
             assert abs(at[2][0] - cx) < 1e-3 and abs(at[2][1] - (cy + 0.71)) < 0.02, (ref, at)
             assert at[1][0] < cx < at[3][0] and at[6][0] < cx < at[4][0] and at[5][1] < cy, (ref, at)
-            v = {1: (round(cx - 1.05, 3), at[1][1]), 2: (cx, round(cy + 1.46, 3)), 3: (round(cx + 1.05, 3), at[3][1]),
-                 4: (round(cx + 1.05, 3), at[4][1]), 5: (cx, round(cy - 1.46, 3)), 6: (round(cx - 1.05, 3), at[6][1])}
+            v = {1: (round(cx - ESD_END, 3), at[1][1]), 2: (cx, round(cy + ESD_MID, 3)),
+                 3: (round(cx + ESD_END, 3), at[3][1]), 4: (round(cx + ESD_END, 3), at[4][1]),
+                 5: (cx, round(cy - ESD_MID, 3)), 6: (round(cx - ESD_END, 3), at[6][1])}
             for n in range(1, 7):
                 netname = design.NET[(ref, str(n))]
                 if netname:
@@ -460,42 +512,40 @@ def main():
             cn1, cn2 = pad_xy(f"C{b + 40 + north}", 1), pad_xy(f"C{b + 40 + north}", 2)
             cs1, cs2 = pad_xy(f"C{b + 40 + south}", 1), pad_xy(f"C{b + 40 + south}", 2)
             expect(f"C{b + 40 + north}", 1, "AVDD"), expect(f"C{b + 40 + south}", 2, "GND")
+            assert cn1[1] - 0.31 > vn[2][1] + VIA_D / 2 + CLEAR and cs1[1] + 0.31 < vs[5][1] - VIA_D / 2 - CLEAR
             path([pn[3], cn2, cs2], "GND")                  # ground: north array pin 3, both capacitors
             path([cn1, cs1, ps[6]], "AVDD")                 # supply: both capacitors, south array pin 6
-            e, w = cx + 1.55, cx - 1.55
+            e, w = round(cx + ESD_LANE, 3), round(cx - ESD_LANE, 3)
+            top = round(vs[5][1] - 0.5, 3)                  # lane that passes over the top of the south array
+            north, south = f"U{b + north}", f"U{b + south}"
             if side < 0:
                 xj = bx - 5.2
                 routes = [
                     # north bundle, heading west
-                    (3, f"U{b + north}", 4, [(xs[3], yB), (xs[3], N1), (e, N1), (e, vn[4][1]), vn[4]], FINE),
-                    (2, f"U{b + north}", 2, [(xs[2], yA), (xs[2], N2), (cx + 0.27, N2), vn[2]], None),
-                    (1, f"U{b + north}", 1, [(xs[1], yB), (xs[1], N3), (vn[1][0], N3), vn[1]], FINE),
-                    (0, f"U{b + north}", 5, [(xs[0], yA), (w, N4), (w, vn[5][1]), vn[5]], None),
-                    # south bundle
-                    (5, f"U{b + south}", 5, [(xs[5], yC), (xj, yC), (xj - (yC - vs[5][1]), vs[5][1]), vs[5]], None),
-                    (4, f"U{b + south}", 4, [(xs[4], yD), (xj, yD), (xj - (yD - vs[4][1]), vs[4][1]), vs[4]], None),
-                    (6, f"U{b + south}", 2, [(xs[6], yD), (xs[6], S3), (xj, S3), (xj - (vs[2][1] - S3), vs[2][1]),
-                                             vs[2]], None),
-                    (7, f"U{b + south}", 1, [(xs[7], yC), (xs[7], S4), (xj + 0.2, S4),
-                                             (xj + 0.2 - (vs[2][1] + 0.5 - S4), vs[2][1] + 0.5),
-                                             (vs[1][0], vs[2][1] + 0.5), vs[1]], FINE),
+                    (3, north, 4, [(xs[3], yB), (xs[3], N1), (e, N1), (e, vn[4][1]), vn[4]], FINE),
+                    (2, north, 2, [(xs[2], yA), (xs[2], N2), (cx + (N2 - vn[2][1]), N2), vn[2]], None),
+                    (1, north, 1, [(xs[1], yB), (xs[1], N3), (vn[1][0], N3), vn[1]], FINE),
+                    (0, north, 5, [(xs[0], yA), (w, N4), (w, vn[5][1]), vn[5]], None),
+                    # south bundle: the first line goes round the top and down the far side
+                    (5, south, 1, [(xs[5], yC), (xj, yC), (xj - (yC - top), top), (w, top), (w, vs[1][1]), vs[1]], None),
+                    (4, south, 5, [(xs[4], yD), (xj, yD), (xj - (yD - vs[5][1]), vs[5][1]), vs[5]], None),
+                    (6, south, 4, [(xs[6], yD), (xs[6], S3), (xj, S3), (xj - (S3 - vs[4][1]), vs[4][1]), vs[4]], None),
+                    (7, south, 2, [(xs[7], yC), (xs[7], S4), (xj, S4), (xj - (vs[2][1] - S4), vs[2][1]), vs[2]], FINE),
                 ]
             else:
                 xj = bx + 5.2
                 routes = [
                     # north bundle, heading east
-                    (12, f"U{b + north}", 5, [(xs[12], yB), (xs[12], N1), (w, N1), (w, vn[5][1]), vn[5]], FINE),
-                    (13, f"U{b + north}", 1, [(xs[13], yA), (xs[13], N2), (vn[1][0], N2), vn[1]], None),
-                    (14, f"U{b + north}", 2, [(xs[14], yB), (xs[14], N3), (cx - (N3 - vn[2][1]), N3), vn[2]], FINE),
-                    (15, f"U{b + north}", 4, [(xs[15], yA), (e, N4), (e, vn[4][1]), vn[4]], None),
+                    (12, north, 5, [(xs[12], yB), (xs[12], N1), (w, N1), (w, vn[5][1]), vn[5]], FINE),
+                    (13, north, 1, [(xs[13], yA), (xs[13], N2), (vn[1][0], N2), vn[1]], None),
+                    (14, north, 2, [(xs[14], yB), (xs[14], N3), (cx - (N3 - vn[2][1]), N3), vn[2]], FINE),
+                    (15, north, 4, [(xs[15], yA), (e, N4), (e, vn[4][1]), vn[4]], None),
                     # south bundle
-                    (11, f"U{b + south}", 4, [(xs[11], yC), (xj, yC), (xj + (yC - vs[5][1] + 0.5), vs[5][1] - 0.5),
-                                              (vs[4][0], vs[5][1] - 0.5), vs[4]], None),
-                    (10, f"U{b + south}", 5, [(xs[10], yD), (xj, yD), (xj + (yD - vs[5][1]), vs[5][1]), vs[5]], None),
-                    (9, f"U{b + south}", 1, [(xs[9], yC), (xs[9], S3), (xj, S3), (xj + (vs[1][1] - S3), vs[1][1]),
-                                             vs[1]], FINE),
-                    (8, f"U{b + south}", 2, [(xs[8], yD), (xs[8], S4), (xj - 0.2, S4),
-                                             (xj - 0.2 + (vs[2][1] - S4), vs[2][1]), vs[2]], None),
+                    (11, south, 4, [(xs[11], yC), (xj, yC), (xj + (yC - top), top), (vs[4][0], top), vs[4]], None),
+                    (10, south, 5, [(xs[10], yD), (xj, yD), (xj + (yD - vs[5][1]), vs[5][1]), vs[5]], None),
+                    (9, south, 1, [(xs[9], yC), (xs[9], S3), (xj, S3), (xj + (vs[1][1] - S3), vs[1][1]), vs[1]], FINE),
+                    (8, south, 2, [(xs[8], yD), (xs[8], S4), (xj - 0.2, S4),
+                                   (xj - 0.2 + (vs[2][1] - S4), vs[2][1]), vs[2]], None),
                 ]
             for k, ref, pin, pts, first in routes:
                 assert abs(pts[0][1] - taps[k]) < 1e-3, (k, pts[0], taps[k])
@@ -511,6 +561,31 @@ def main():
         gv = (round(pad_xy(cb, 2)[0] + 0.72, 3), pad_xy(cb, 2)[1])
         track(pad_xy(cb, 2), gv, "GND", width=0.2)
         via(gv, "GND")
+
+    # ---- XIAO signals that must reach the left half, and the battery: down under the module on the front,
+    #      then west on the back below the notch, one lane each, ending left of the notch (staggered, so a
+    #      via fits at each end). (pad, x of the run under the module, lane y, x where the lane ends, width)
+    bus = [(3, 41.85, 13.0, 24.4, TRACK), (4, 37.75, 13.48, 23.7, TRACK), (5, None, 13.96, 24.4, TRACK),
+           (6, None, 14.44, 23.7, TRACK), (19, None, 14.98, 24.4, 0.25), (1, 45.8, 15.48, 23.7, TRACK),
+           (14, None, 16.1, 24.4, 0.25)]
+    names = {1: "CS_A", 3: "DRDY_A", 4: "ADS_START", 5: "MISO", 6: "SCLK_MCU", 19: "VBAT", 14: "VBUS"}
+    for pin, xv, lane, xl, wd in bus:
+        expect("U1", pin, names[pin])
+        q = pad_xy("U1", pin)
+        xv = q[0] if xv is None else xv
+        if pin in (19, 14):                                 # a pad under the module, or one of the lower row:
+            pts = [q, (xv, lane)]                           # straight from it to its lane
+        else:                                               # an edge pad: out of its land, sideways if a land is in the way
+            pts = [q, (q[0], 3.3)] + ([(xv, round(3.3 + abs(xv - q[0]), 3))] if xv != q[0] else []) + [(xv, lane)]
+        path(pts, names[pin], width=wd)
+        via((xv, lane), names[pin])
+        track((xv, lane), (xl, lane), names[pin], layer=BCU, width=wd)      # the routers carry on from its end
+    # the enable divider hangs on the AFE_EN pad
+    expect("R1", 1, "AFE_EN"), expect("U1", 9, "AFE_EN"), expect("R1", 2, "AVDD_EN"), expect("R2", 1, "AVDD_EN")
+    a1 = pad_xy("R1", 1)
+    assert abs(a1[1] - 19.94) < 0.02 and pad_xy("U1", 9)[0] - 1.0 < a1[0] < pad_xy("U1", 9)[0] + 1.0, a1
+    track(a1, (a1[0], 19.1), "AFE_EN")                      # into the land above it
+    track(pad_xy("R1", 2), pad_xy("R2", 1), "AVDD_EN")
 
     # ---- ground pads that sit among signal tracks get their own via, so they do not depend on the pour:
     #      the shield links and, on converter B, the clock pull-down
@@ -549,7 +624,8 @@ def main():
         chain([g_up], [((g_up[0], round(g_up[1] - 1.1, 3)), g_up)])
         chain([g_dn], [((round(g_dn[0] + 0.775, 3), round(g_dn[1] - 0.2, 3)), g_dn)])
 
-    # ---- planes: layer 2 is ground everywhere; layer 3 carries +3V3 (top) and AVDD (bottom)
+    # ---- planes: layer 2 is ground everywhere; layer 3 carries DVDD (top) and AVDD (bottom).
+    #      Clearance 0.15 mm: with 0.2 the clearances of neighbouring vias 1 mm apart merge into slots.
     def zone(netname, layer, pts, prio=0, name=""):
         z = pcbnew.ZONE(board)
         z.SetLayer(layer)
@@ -561,8 +637,8 @@ def main():
         for x, y in pts:
             o.Append(FromMM(OX + x), FromMM(OY + y))
         z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
-        z.SetLocalClearance(FromMM(0.2))
-        z.SetMinThickness(FromMM(0.2))
+        z.SetLocalClearance(FromMM(0.15))
+        z.SetMinThickness(FromMM(0.15))
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
         board.Add(z)
         return z
@@ -570,58 +646,68 @@ def main():
     full = [(0, 0), (W, 0), (W, H), (0, H)]
     zone("GND", pcbnew.In1_Cu, full, 0, "ground plane")
     zone("GND", pcbnew.In2_Cu, full, 0, "ground fill")
-    zone("+3V3", pcbnew.In2_Cu, [(1.0, 1.0), (W - 1.0, 1.0), (W - 1.0, SPLIT_Y - 0.2), (1.0, SPLIT_Y - 0.2)], 1,
+    zone("DVDD", pcbnew.In2_Cu, [(1.0, 1.0), (W - 1.0, 1.0), (W - 1.0, SPLIT_Y - 0.2), (1.0, SPLIT_Y - 0.2)], 1,
          "digital supply")
     zone("AVDD", pcbnew.In2_Cu, [(1.0, SPLIT_Y + 0.2), (W - 1.0, SPLIT_Y + 0.2), (W - 1.0, H - 1.0), (1.0, H - 1.0)], 1,
          "analog supply")
 
-    # ---- antenna keep-out: no copper on any layer under and beside the XIAO's antenna end
-    k = pcbnew.ZONE(board)
-    k.SetIsRuleArea(True)
-    k.SetZoneName("antenna keep-out")
-    ls = pcbnew.LSET()
-    for lay in (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu):
-        ls.AddLayer(lay)
-    k.SetLayerSet(ls)
-    k.SetDoNotAllowTracks(True)
-    k.SetDoNotAllowVias(True)
-    k.SetDoNotAllowPads(False)
-    k.SetDoNotAllowFootprints(False)
-    (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
-    o = k.Outline()
-    o.NewOutline()
-    for x, y in [(26.2, 4.0), (31.2, 4.0), (31.2, 12.4), (26.2, 12.4)]:
-        o.Append(FromMM(OX + x), FromMM(OY + y))
-    board.Add(k)
+    # ---- nothing on the top layer, and no via, under bare metal of the XIAO that has no land here
+    for n, (x0, y0, x1, y1) in enumerate(MODULE_METAL):
+        k = pcbnew.ZONE(board)
+        k.SetIsRuleArea(True)
+        k.SetZoneName(f"under the module {n + 1}")
+        k.SetLayer(pcbnew.F_Cu)
+        k.SetDoNotAllowTracks(True)
+        k.SetDoNotAllowVias(True)
+        k.SetDoNotAllowPads(False)
+        k.SetDoNotAllowFootprints(False)
+        (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
+        k.AddPolygon(pcbnew.VECTOR_VECTOR2I([V(x, y) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]))
+        board.Add(k)
 
-    # ---- every ground pad not yet on a fixed ground track gets a via of its own, as close as one fits.
-    #      Without this, which pads end up cut off from the pours depends on what the router leaves free.
+    # ---- every pad of a plane net that is not yet on a fixed track of that net gets a via of its own, as
+    #      close as one fits. Without this, which pads end up cut off depends on what the router leaves free.
+    #      Supply pads only where their plane is (layer 3 is split at SPLIT_Y); ground everywhere.
     import math
     import lastmile as L
-    space = L.Space(board, "GND")
-    gnd_tracks = [t for t in board.GetTracks() if t.GetNetname() == "GND" and not isinstance(t, pcbnew.PCB_VIA)]
     ring = sorted(((dx * 0.05, dy * 0.05) for dx in range(-44, 45) for dy in range(-44, 45)
                    if 0.55 <= math.hypot(dx, dy) * 0.05 <= 2.2), key=lambda o: o[0] ** 2 + o[1] ** 2)
-    own, none = 0, []
+    for netname, y_from, y_to in (("DVDD", 1.5, SPLIT_Y - 0.6), ("AVDD", SPLIT_Y + 0.6, H - 1.5), ("GND", 0.0, H)):
+        space = L.Space(board, netname)
+        fixed = [t for t in board.GetTracks() if t.GetNetname() == netname and not isinstance(t, pcbnew.PCB_VIA)]
+        own, none = 0, []
+        for ref in sorted(fps):
+            for pad in fps[ref].Pads():
+                if pad.GetNetname() != netname or pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+                    continue
+                if any(pad.HitTest(t.GetStart()) or pad.HitTest(t.GetEnd()) for t in fixed):
+                    continue
+                layer = pcbnew.F_Cu if pad.IsOnLayer(pcbnew.F_Cu) else pcbnew.B_Cu
+                x, y = ToMM(pad.GetPosition().x) - OX, ToMM(pad.GetPosition().y) - OY
+                for dx, dy in ring:
+                    vp = (round(x + dx, 3), round(y + dy, 3))
+                    if y_from <= vp[1] <= y_to and space.via_ok(*vp) and space.track_ok((x, y), vp, layer):
+                        track((x, y), vp, netname, layer=layer, width=0.2)
+                        via(vp, netname)
+                        space.holes.append((V(*vp).x, V(*vp).y))
+                        own += 1
+                        break
+                else:
+                    none.append(f"{ref}.{pad.GetNumber()}")
+        print(f"{netname} vias placed beside pads: {own}" + (f"; none at {', '.join(none)}" if none else ""))
+
+    # ---- capacitors and resistors: a ground pad that has its track to a via is kept out of the pours, so both
+    #      pads of the part see thin copper and heat alike in the oven. Its connection is the track.
+    gnd_tracks = [t for t in board.GetTracks() if t.GetNetname() == "GND" and not isinstance(t, pcbnew.PCB_VIA)]
+    apart = 0
     for ref in sorted(fps):
+        if ref[0] not in "CR" or ref.startswith("RN"):
+            continue
         for pad in fps[ref].Pads():
-            if pad.GetNetname() != "GND" or pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
-                continue
-            if any(pad.HitTest(t.GetStart()) or pad.HitTest(t.GetEnd()) for t in gnd_tracks):
-                continue
-            layer = pcbnew.F_Cu if pad.IsOnLayer(pcbnew.F_Cu) else pcbnew.B_Cu
-            x, y = ToMM(pad.GetPosition().x) - OX, ToMM(pad.GetPosition().y) - OY
-            for dx, dy in ring:
-                vp = (round(x + dx, 3), round(y + dy, 3))
-                if space.via_ok(*vp) and space.track_ok((x, y), vp, layer):
-                    track((x, y), vp, "GND", layer=layer, width=0.2)
-                    via(vp, "GND")
-                    space.holes.append((V(*vp).x, V(*vp).y))
-                    own += 1
-                    break
-            else:
-                none.append(f"{ref}.{pad.GetNumber()}")
-    print(f"ground vias placed beside pads: {own}" + (f"; no room at {', '.join(none)}" if none else ""))
+            if pad.GetNetname() == "GND" and any(pad.HitTest(t.GetStart()) or pad.HitTest(t.GetEnd()) for t in gnd_tracks):
+                pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_NONE)
+                apart += 1
+    print(f"ground pads of small parts kept out of the pours: {apart}")
 
     out = os.path.join(POD, "emg-pod-unrouted.kicad_pcb")
     pcbnew.SaveBoard(out, board)

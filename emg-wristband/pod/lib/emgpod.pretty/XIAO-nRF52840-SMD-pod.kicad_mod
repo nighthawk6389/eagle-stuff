@@ -1,4 +1,4 @@
-(footprint "XIAO-nRF52840-SMD-noNFC"
+(footprint "XIAO-nRF52840-SMD-pod"
 	(version 20241229)
 	(generator "pcbnew")
 	(generator_version "9.0")
@@ -108,15 +108,6 @@
 		(solder_mask_margin 0.0508)
 		(thermal_bridge_angle 45)
 		(uuid "aabcfc3b-fa72-4e48-95d1-d53474158cc0")
-	)
-	(pad "7" smd roundrect
-		(at 0.835 -2.88)
-		(size 2.75 2)
-		(layers "F.Cu" "F.Mask" "F.Paste")
-		(roundrect_rratio 0.25)
-		(solder_mask_margin 0.0508)
-		(thermal_bridge_angle 45)
-		(uuid "3e086061-1f3f-4b1e-9354-920126d40249")
 	)
 	(pad "8" smd roundrect
 		(at 17 -2.88)

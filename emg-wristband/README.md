@@ -4,8 +4,9 @@ KiCad project for the main pod: two ADS1298 converters, a Seeed XIAO nRF52840 Se
 with a USB interlock, and a vibration-motor driver. The brief is in `CLAUDE.md`. What is still
 uncertain is in `OPEN.md`; read that before trusting anything here.
 
-Status (2026-11-28): schematic drawn and ERC clean; board laid out and routed, 49 x 49 mm, four layers;
-fabrication files written. Nothing has been ordered or built. The layout's open points are under
+Status (2026-11-28): schematic drawn and ERC clean; board laid out and routed, 49 x 49 mm with a notch
+under the antenna, four layers; reviewed once and reworked; fabrication files written. Nothing has been
+ordered or built. The layout's open points are under
 "Layout" in `OPEN.md`.
 
 ## Where things are
@@ -33,7 +34,7 @@ next time it runs.** Either keep changing the generator, or stop using it and ed
     python3 gen/build.py           # needs KiCad 9's kicad-cli on the path
     python3 tools/stock_report.py  # re-reads stock from jlcpcb.com
 
-`build.py` does four things: writes the sheets, runs ERC, exports KiCad's netlist and compares all 546
+`build.py` does four things: writes the sheets, runs ERC, exports KiCad's netlist and compares all 552
 pins with the tables in `gen/design.py` (which take their pin numbers from `gen/parts.py`, copied from
 the datasheets), and exports the PDF and BOM. It exits non-zero if ERC or the comparison fails.
 
@@ -59,7 +60,9 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
   part sits, and the routes that must not be left to an autorouter. Those are the 32 electrode lines
   (connector, resistor array, converter pin, in one straight line on the top layer), their fan-out on
   the back to the filter capacitors and to the ESD arrays, the via to a plane for every supply and
-  ground pin of the converters, VCAP1, and a ground via beside every ground pad. It also names the
+  ground pin of the converters, VCAP1, a ground via beside every ground pad, and the six nets that
+  cross from the XIAO to the left half below the notch (five signals and the battery). The outline, with its
+  notch under the XIAO's antenna, and the keep-outs under the module's bare pads are there too. It also names the
   areas reserved for the input lines (`quiet_zones`): the fan-out on the back around each converter
   and the stubs under it on the front. The routers lay nothing there.
 - `gen/route.py` hands the rest to Freerouting. Ground is left out of that: ground pads are joined by
@@ -68,15 +71,16 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
   pours ground on the outer layers, gives supply pads a via to their plane, stitches the pours to the
   ground plane, removes dead-end stubs, and runs KiCad's DRC. It prints what is still open, if anything.
 - `gen/fab.py` writes the Gerbers, drill files and placement file, checks every pad's net against
-  `gen/design.py`, checks that no routed track entered a reserved area, reports how close other
-  signals come to an input line, and writes the full DRC report. It exits non-zero unless DRC has no
-  errors, nothing is unconnected and the reserved areas are clean.
+  `gen/design.py`, checks that no routed track entered a reserved area and that the planes are
+  filled between the vias of each row, reports how close other signals come to an input line and
+  how close vias come to pads, and writes the full DRC report. It exits non-zero unless DRC has no
+  errors, nothing is unconnected, the reserved areas are clean and the planes have no gaps.
 
 Any change to `gen/board.py` moves many of the autorouted tracks on the next run. The board in `pod/`
 is the result of one run, and `out/fab/` was made from exactly that file.
 
-Layers: 1 signal and parts, 2 ground (one plane, no splits, but with slots where via clearances
-merge: OPEN.md, R6), 3 supplies (+3V3 above y = 27.6 mm, AVDD below, ground
+Layers: 1 signal and parts, 2 ground (one plane, no splits), 3 supplies (DVDD above y = 26.0 mm, AVDD
+below, ground
 fill elsewhere), 4 signal. No parts on the back; the four SWD rescue pads are there, under the XIAO.
 
 ## Sheets

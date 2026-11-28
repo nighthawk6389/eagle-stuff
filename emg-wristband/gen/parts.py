@@ -85,7 +85,7 @@ def build_symbols():
     box_symbol("XIAO_nRF52840_SMD", "U",
                left=[_p(X, n) for n in (1, 2, 3, 4, 5, 6, 7)] + [None] + [_p(X, n) for n in (15, 16, 17, 18)],
                right=[_p(X, n) for n in (14, 13, 12, 11, 10, 9, 8)] + [None] + [_p(X, n) for n in (19, 20, 21, 22)],
-               width=35.56, pitch=5.08, footprint="emgpod:XIAO-nRF52840-SMD-noNFC", datasheet=DS["XIAO"],
+               width=35.56, pitch=5.08, footprint="emgpod:XIAO-nRF52840-SMD-pod", datasheet=DS["XIAO"],
                description="Seeed XIAO nRF52840 soldered down as a module; pads 15-22 are on its underside.")
     L = LP5907_PINS
     box_symbol("LP5907MFX-3.0", "U", left=[_p(L, 1), None, _p(L, 3)], right=[_p(L, 5), None, _p(L, 4)],
@@ -102,7 +102,7 @@ def build_symbols():
                right=[(5, "", "passive"), (6, "", "passive"), (7, "", "passive"), (8, "", "passive")],
                pitch=5.08, width=10.16, footprint="Resistor_SMD:R_Array_Convex_4x0402",
                description="Four isolated resistors: 1-8, 2-7, 3-6, 4-5")
-    for rail in ("AVDD", "VBAT"):
+    for rail in ("AVDD", "VBAT", "DVDD"):
         power_symbol(rail)
 
 
@@ -115,7 +115,7 @@ CAT = {
     "ADS1298": ("ADS1298IPAGR", "Package_QFP:TQFP-64_10x10mm_P0.5mm", "C527440", "ADS1298IPAGR"),
     # Sense version (IMU and PDM microphone on board). "Standard Only" at JLCPCB: the owner chose
     # Standard assembly on 2026-11-28. The plain XIAO, C17209540, fits the same footprint.
-    "XIAO": ("XIAO nRF52840 Sense", "emgpod:XIAO-nRF52840-SMD-noNFC", "C17401557", "Seeed 102010469"),
+    "XIAO": ("XIAO nRF52840 Sense", "emgpod:XIAO-nRF52840-SMD-pod", "C17401557", "Seeed 102010469"),
     "LDO": ("LP5907MFX-3.0", "Package_TO_SOT_SMD:SOT-23-5", "C475492", "LP5907MFX-3.0/NOPB"),
     "ESD": ("TPD4E001DRL", "Package_TO_SOT_SMD:SOT-563", "C527516", "TPD4E001DRLR"),
     "NFET": ("AO3400A", "Package_TO_SOT_SMD:SOT-23", "C20917", "AO3400A"),
@@ -127,6 +127,7 @@ CAT = {
     "TANT22U": ("22u", "Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B", "C117031", "T491B226M010AT"),
     "R0": ("0R", FP_R0402, "C17168", "0402WGF0000TCE"),
     "R33": ("33R", FP_R0402, "C25105", "0402WGF330JTCE"),
+    "R1K": ("1k", FP_R0402, "C11702", "0402WGF1001TCE"),
     "R10K": ("10k", FP_R0402, "C25744", "0402WGF1002TCE"),
     # series resistor in every skin-facing line (16 sense lines per converter and the bias line)
     "RSKIN": ("47k", FP_R0402, "C25792", "0402WGF4702TCE"),

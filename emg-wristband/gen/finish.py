@@ -24,7 +24,7 @@ import lastmile as L  # noqa: E402
 
 RAW = sys.argv[1] if len(sys.argv) > 1 else os.path.join(B.ROOT, "out", "route", "routed.kicad_pcb")
 PCB = sys.argv[2] if len(sys.argv) > 2 else os.path.join(B.POD, "emg-pod.kicad_pcb")
-PLANES = ("GND", "AVDD", "+3V3")
+PLANES = ("GND", "AVDD", "DVDD")
 
 
 def mm(p):
@@ -252,11 +252,13 @@ TP_LABEL = {"VBAT": "BAT", "AVDD": "AVDD", "+3V3": "3V3", "GND": "GND", "SCLK": 
             "ADS_CLK": "CLK", "BIAS": "BIAS", "SWDIO": "SWDIO", "SWCLK": "SWCLK", "NRST": "NRST"}
 
 
-LABEL_BELOW = ("TP31",)        # a resistor's outline is in the way above this one
+# where a test point's label goes if not above it: offset from the pad (mm)
+LABEL_AT = {"TP31": (0, 1.25), "TP14": (0.35, 1.25), "TP16": (-0.35, 1.25), "TP3": (1.75, 0)}
 
 
 def silkscreen(brd):
-    """Only a few references, plus the labels a person needs with the board in hand."""
+    """A few references, plus the labels a person needs with the board in hand. Text is 1.0 mm high with
+    0.15 mm strokes, the smallest JLCPCB lists as printable."""
     def text(s, x, y, size=1.0, back=False, width=None):
         t = pcbnew.PCB_TEXT(brd)
         t.SetText(s)
@@ -264,7 +266,7 @@ def silkscreen(brd):
         t.SetLayer(pcbnew.B_SilkS if back else pcbnew.F_SilkS)
         t.SetMirrored(back)
         t.SetTextSize(VECTOR2I(FromMM(width or size), FromMM(size)))
-        t.SetTextThickness(FromMM(max(0.12, size * 0.15)))
+        t.SetTextThickness(FromMM(max(0.15, size * 0.15)))
         brd.Add(t)
 
     def line(a, b):
@@ -277,49 +279,50 @@ def silkscreen(brd):
         brd.Add(g)
 
     # where each visible reference goes (board mm); the library positions land on pads once parts are rotated
-    ref_at = {"U100": (B.BX["A"], B.CHIP_Y - 1.5), "U200": (B.BX["B"], B.CHIP_Y - 1.5), "U1": (37.0, 13.0),
-              "U2": (21.2, 19.2), "J100": (B.BX["A"], 47.3), "J200": (B.BX["B"], 47.3)}
+    ref_at = {"U100": (B.BX["A"], B.CHIP_Y - 1.5), "U200": (B.BX["B"], B.CHIP_Y - 1.5), "U1": (37.0, 12.9),
+              "U2": (21.2, 19.3), "J100": (B.BX["A"], 47.3), "J200": (B.BX["B"], 47.3),
+              "Q1": (14.2, 19.7), "Q2": (20.6, 1.2), "D1": (19.4, 3.2)}
     for fp in brd.GetFootprints():
         ref = fp.GetReference()
         for f in fp.GetFields():                             # LCSC numbers and values stay off the board
             f.SetVisible(False)
         t = fp.Reference()
         t.SetVisible(ref in ref_at)
-        t.SetTextSize(VECTOR2I(FromMM(0.8), FromMM(0.8)))
-        t.SetTextThickness(FromMM(0.13))
+        t.SetTextSize(VECTOR2I(FromMM(0.8), FromMM(1.0)))
+        t.SetTextThickness(FromMM(0.15))
         if ref in ref_at:
             t.SetPosition(B.V(*ref_at[ref]))
             t.SetTextAngle(pcbnew.EDA_ANGLE(0, pcbnew.DEGREES_T))
-        if ref == "U1":                                      # the project's footprint has no outline; older boards did
-            for g in list(fp.GraphicalItems()):
-                if g.GetLayer() == pcbnew.F_SilkS:
-                    fp.Remove(g)
         if ref.startswith("TP"):
             pad = list(fp.Pads())[0]
             x, y = mm(pad.GetPosition())
             label = TP_LABEL[pad.GetNetname()]
             if fp.GetLayer() == L.BK:                        # two columns on the back: labels outwards
-                text(label, x, y - 1.4 if x > 46.0 else y + 1.4, 0.8, back=True)
-            else:                                            # above the pad; narrow letters, the pads are 2.2 mm apart
-                text(label, x, y + 1.1 if ref in LABEL_BELOW else y - 1.1, 0.8, width=0.62)
+                text(label, x, y - 1.5 if x > 46.0 else y + 1.5, 1.0, back=True, width=0.8)
+            else:                                            # above the pad; narrow letters, the pads are 2.4 mm apart
+                dx, dy = LABEL_AT.get(ref, (0, -1.25))
+                text(label, x + dx, y + dy, 1.0, width=0.7)
 
-    # the XIAO: marks at the two corners of its antenna end (the module is 21 x 17.8 mm)
-    x0, y0, y1 = B.XIAO_X0 - 0.15, B.XIAO_Y0 - 0.15, B.XIAO_Y0 + 17.8 + 0.15
-    for ya, yb in ((y0, y0 + 2.0), (y1, y1 - 2.0)):
-        line((x0, ya), (x0, yb))
-        line((x0, ya), (x0 + 1.4, ya))
-    text("XIAO nRF52840 Sense", 37.0, 14.3, 0.8)
+    # the XIAO: a mark at the one corner of its antenna end that is over the board (the module is 21 x 17.8 mm)
+    x0, y1 = B.XIAO_X0 - 0.15, B.XIAO_Y0 + 17.8 + 0.15
+    line((x0, y1), (x0, y1 - 2.0))
+    line((x0, y1), (x0 + 1.4, y1))
+    text("XIAO nRF52840 Sense", 37.5, 14.3, 1.0, width=0.8)
     text("EMG POD rev A", B.W / 2, 20.0, 1.5, back=True)      # the back has no parts, so the name goes there
     text("A", B.BX["A"] + 6.3, 38.2, 1.5)
     text("B", B.BX["B"] + 6.3, 38.2, 1.5)
-    text("BAT", 6.0, 12.4, 0.9)
+    text("BAT", 6.0, 12.5, 1.0)
     text("+", 7.0, 11.1, 1.0)
     text("-", 5.0, 11.1, 1.0)
-    text("MOTOR", 14.85, 0.85, 0.8)
+    text("MOT", 14.85, 2.2, 1.0, width=0.7)
+
+
+INPUT_LINE = re.compile(r"^[AB]_(E|IN)\d")
 
 
 def remove_dangling(brd):
-    """Take out stubs the routers left behind: tracks with a free end, vias joined on one layer only."""
+    """Take out stubs the routers left behind: tracks with a free end, vias joined on one layer only.
+    That includes a fixed lane the routers did not use; it never touches the input lines."""
     removed = 0
     for _ in range(40):                                      # a stub of several segments comes off one at a time
         data = run_drc(brd, "--severity-all")
@@ -332,10 +335,11 @@ def remove_dangling(brd):
             net = re.search(r"\[([^\]]+)\]", desc)
             length = re.search(r"length ([0-9.]+) mm", desc)
             for t in list(brd.GetTracks()):
-                if t.IsLocked() or not net or t.GetNetname() != net.group(1):
+                if not net or t.GetNetname() != net.group(1) or INPUT_LINE.match(t.GetNetname()):
                     continue
                 is_via = isinstance(t, pcbnew.PCB_VIA)
-                if kind == "via_dangling" and is_via and t.GetPosition() == pt:
+                near = abs(t.GetPosition().x - pt.x) < 2000 and abs(t.GetPosition().y - pt.y) < 2000   # the report rounds
+                if kind == "via_dangling" and is_via and near:
                     brd.Delete(t)
                     removed += 1
                     break
@@ -383,7 +387,7 @@ def main():
     filler = pcbnew.ZONE_FILLER(brd)
     filler.Fill(brd.Zones())
     avdd = plane_vias(brd, "AVDD", (1.5, B.SPLIT_Y + 0.6, B.W - 1.5, B.H - 1.5))
-    avdd += plane_vias(brd, "+3V3", (1.5, 1.5, B.W - 1.5, B.SPLIT_Y - 0.6))
+    avdd += plane_vias(brd, "DVDD", (1.5, 1.5, B.W - 1.5, B.SPLIT_Y - 0.6))
     filler.Fill(brd.Zones())
     gnd = stitch(brd)
     filler.Fill(brd.Zones())
