@@ -9,3 +9,4 @@ out/*.net
 out/route/
 pod/emg-pod-unrouted.*
 pod/*.kicad_pcb-bak
+logs/

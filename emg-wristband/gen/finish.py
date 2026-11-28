@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import board as B  # noqa: E402
 
-PCB = os.path.join(B.POD, "emg-pod.kicad_pcb")
+PCB = sys.argv[1] if len(sys.argv) > 1 else os.path.join(B.POD, "emg-pod.kicad_pcb")
 KEEP_REF = ("U", "J")            # references left on the silkscreen; the rest are on the fab layer only
 
 
@@ -35,9 +35,7 @@ def main():
         o.NewOutline()
         for x, y in [(0, 0), (B.W, 0), (B.W, B.H), (0, B.H)]:
             o.Append(FromMM(B.OX + x), FromMM(B.OY + y))
-        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
-        z.SetThermalReliefGap(FromMM(0.2))
-        z.SetThermalReliefSpokeWidth(FromMM(0.25))
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
         z.SetLocalClearance(FromMM(0.2))
         z.SetMinThickness(FromMM(0.2))
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
@@ -73,10 +71,90 @@ def main():
     text("+", 7.0, 11.0, 1.0)
     text("-", 5.0, 11.0, 1.0)
     text("MOTOR", 14.9, 0.9, 0.8)
+    for v in [x for x in brd.GetTracks() if isinstance(x, pcbnew.PCB_VIA) and x.GetNetname() == "GND"
+              and not x.IsLocked()]:
+        brd.Remove(v)                                   # stitching vias from an earlier run
+    pcbnew.ZONE_FILLER(brd).Fill(brd.Zones())
+    n = stitch(brd)
     pcbnew.ZONE_FILLER(brd).Fill(brd.Zones())
     pcbnew.SaveBoard(PCB, brd)
-    print("zones", len(brd.Zones()))
+    print("ground stitching vias:", n)
     return 0
+
+
+def islands(zone, layer, shrink):
+    """Each filled island of a zone as its own polygon set, shrunk by `shrink` mm."""
+    polys = zone.GetFilledPolysList(layer)
+    out = []
+    for i in range(polys.OutlineCount()):
+        s = pcbnew.SHAPE_POLY_SET()
+        s.AddOutline(polys.Outline(i))
+        for h in range(polys.HoleCount(i)):
+            s.AddHole(polys.Hole(i, h))
+        s.Deflate(FromMM(shrink), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, FromMM(0.01))
+        if s.OutlineCount():
+            out.append(s)
+    return out
+
+
+def stitch(brd, spacing=3.0):
+    """Join the outer ground pours to the planes: at least one via in every island that has room."""
+    zones = {z.GetZoneName(): z for z in brd.Zones()}
+    need = B.VIA_D / 2 + 0.03
+    top = islands(zones["top ground pour"], pcbnew.F_Cu, need)
+    bot = islands(zones["bottom ground pour"], pcbnew.B_Cu, need)
+    pads = []
+    for fp in brd.GetFootprints():
+        for pad in fp.Pads():
+            bb = pad.GetBoundingBox()
+            bb.Inflate(FromMM(B.VIA_D / 2 + 0.15))
+            pads.append(bb)
+    gnd = brd.FindNet("GND")
+    placed = []
+    step = 0.25
+    nx, ny = int(B.W / step), int(B.H / step)
+
+    def free(pt):
+        return not any(bb.Contains(pt) for bb in pads)
+
+    def far(x, y, d):
+        return all((x - a) ** 2 + (y - b) ** 2 >= d * d for a, b in placed)
+
+    count = 0
+    for layer_islands, other in ((top, bot), (bot, top)):
+        for isl in layer_islands:
+            bb = isl.BBox()
+            got = 0
+            for d in (spacing, 0.9):                     # second round only if the island got none
+                if d != spacing and got:
+                    break
+                for iy in range(ny):
+                    y = iy * step
+                    if not (bb.GetTop() <= FromMM(B.OY + y) <= bb.GetBottom()):
+                        continue
+                    for ix in range(nx):
+                        x = ix * step
+                        pt = B.V(x, y)
+                        if not bb.Contains(pt) or not isl.Contains(pt) or not far(x, y, d) or not free(pt):
+                            continue
+                        if not any(o.Contains(pt) for o in other):
+                            continue
+                        v = pcbnew.PCB_VIA(brd)
+                        v.SetPosition(pt)
+                        v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                        v.SetWidth(pcbnew.F_Cu, FromMM(B.VIA_D))
+                        v.SetDrill(FromMM(B.VIA_DRILL))
+                        v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+                        v.SetNet(gnd)
+                        brd.Add(v)
+                        placed.append((x, y))
+                        got += 1
+                        count += 1
+                        if d != spacing:
+                            break                        # one via is enough for a small island
+                    if d != spacing and got:
+                        break
+    return count
 
 
 if __name__ == "__main__":

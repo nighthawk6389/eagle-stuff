@@ -26,7 +26,7 @@ OX, OY = 100.0, 60.0            # where the board sits on the KiCad page
 CLEAR = 0.127                   # copper clearance (5 mil); JLCPCB's 4-layer minimum is tighter
 TRACK = 0.15
 FINE = 0.127                    # the fixed electrode routes, which pass between vias
-VIA_D, VIA_DRILL = 0.6, 0.3
+VIA_D, VIA_DRILL = 0.5, 0.3
 POWER_NETS = ["VBAT", "AVDD", "+3V3", "GND", "MOT_P", "MOT_N", "VBUS"]
 
 # block centres: converter A on the left half, converter B on the right half
@@ -80,8 +80,8 @@ def placement():
     P["TP4"] = (2.0, 15.4, 0)
     P["TP5"] = (9.3, 17.4, 0)
     P["TP2"] = (5.5, 17.4, 0)
-    P["TP30"] = (BX["A"] - 10.3, 42.6, 0)
-    P["TP31"] = (BX["A"] - 10.3, 45.2, 0)
+    P["TP30"] = (2.0, 17.8, 0)
+    P["TP31"] = (2.0, 20.2, 0)
     # ---- the two converter blocks, identical
     for X, b in (("A", 100), ("B", 200)):
         bx, cy = BX[X], CHIP_Y
@@ -114,12 +114,13 @@ def placement():
         P[f"R{b + 23}"] = (bx + 0.2, cy - 8.1, 90)         # clock series (A) / pull-down (B)
         P[f"R{b + 20}"] = (bx + 1.7, cy - 8.1, 270)        # PWDN pull-up
         # ESD arrays and their capacitors, either side of the resistor arrays
-        esd = [(f"U{b + 4}", -10.6), (f"U{b + 3}", -8.1), (f"U{b + 2}", 5.6), (f"U{b + 1}", 8.1), (f"U{b + 5}", 10.6)]
-        capn = {b + 4: b + 44, b + 3: b + 43, b + 2: b + 42, b + 1: b + 41, b + 5: b + 45}
-        for ref, dx in esd:
-            P[ref] = (bx + dx, 37.75, 90)
-            P[f"C{capn[int(ref[1:])]}"] = (bx + dx, 40.0, 0)
-        P[f"R{b + 22}"] = (bx + 10.0, 42.2, 0)            # shield link
+        # ESD arrays and their capacitors in the corners beside the connector; the bias one above it
+        for n, dx, y in [(4, -10.2, 42.4), (3, -10.2, 45.6), (2, 10.2, 42.4), (1, 10.2, 45.6)]:
+            P[f"U{b + n}"] = (bx + dx, y, 0)
+            P[f"C{b + 40 + n}"] = (bx + dx, y + 1.6, 0)
+        P[f"U{b + 5}"] = (bx - 9.6, 37.9, 90)
+        P[f"C{b + 45}"] = (bx - 9.6, 40.0, 0)
+        P[f"R{b + 22}"] = (bx + 6.2, 40.2, 0)             # shield link
         if X == "A":
             P["R124"] = (bx - 7.75, cy + 5.4, 180)
             P["C140"] = (bx - 5.9, 38.0, 90)
@@ -141,7 +142,7 @@ def main():
     ds.m_MinClearance = FromMM(CLEAR)
     ds.m_ViasMinSize = FromMM(0.5)
     ds.m_MinThroughDrill = FromMM(0.25)
-    ds.m_ViasMinAnnularWidth = FromMM(0.125)
+    ds.m_ViasMinAnnularWidth = FromMM(0.1)
     ds.m_CopperEdgeClearance = FromMM(0.3)
     ds.m_HoleToHoleMin = FromMM(0.25)
     ds.SetBoardThickness(FromMM(1.6))

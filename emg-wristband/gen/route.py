@@ -27,9 +27,21 @@ def main():
     dsn, ses = os.path.join(work, "pod.dsn"), os.path.join(work, "pod.ses")
     board = pcbnew.LoadBoard(SRC)
     assert pcbnew.ExportSpecctraDSN(board, dsn), "DSN export failed"
+    # Ground is not autorouted: its pads are joined by the pours and planes (gen/finish.py).
+    text = open(dsn).read()
+    a = text.index("(net GND")
+    depth, j = 0, a
+    while True:
+        depth += {"(": 1, ")": -1}.get(text[j], 0)
+        j += 1
+        if depth == 0:
+            break
+    text = text[:a] + "(net GND)" + text[j:]
+    open(dsn, "w").write(text)
     if os.path.exists(ses):
         os.remove(ses)
-    cmd = ["java", "-Djava.awt.headless=true", "-jar", jar, "-de", dsn, "-do", ses, "-mp", passes, "-mt", "1"]
+    cmd = ["java", "-Djava.awt.headless=true", "-jar", jar, "-de", dsn, "-do", ses, "-mp", passes, "-mt", "1",
+           "-da", f"--router.max_passes={passes}", "--router.job_timeout=00:12:00", "--gui.enabled=false"]
     log = open(os.path.join(work, "freerouting.log"), "w")
     subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=3000)
     assert os.path.exists(ses), "Freerouting wrote no session file; see out/route/freerouting.log"
