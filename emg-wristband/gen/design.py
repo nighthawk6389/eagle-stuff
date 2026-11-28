@@ -15,10 +15,11 @@ GLOBAL = {"SCLK", "MOSI", "MISO", "CS_A", "CS_B", "DRDY_A", "DRDY_B", "ADS_START
           "ADS_CLK", "AFE_EN", "MOTOR", "VBUS", "RLDINV", "BIAS"}
 
 NET = {}        # (ref, pin) -> net
+PARTS = {}      # ref -> (footprint, value, on the BOM?)
 BOM = {}        # ref -> (value, footprint, lcsc, mpn)
 WHERE = {}      # net -> set of sheet file names
 
-LIB = {"ADS1298": "emgpod:ADS1298IPAG", "XIAO": "emgpod:XIAO_nRF52840_SMD", "LDO": "emgpod:LP5907MFX-3.0",
+LIB = {"RN47K": "emgpod:R_Array_4", "ADS1298": "emgpod:ADS1298IPAG", "XIAO": "emgpod:XIAO_nRF52840_SMD", "LDO": "emgpod:LP5907MFX-3.0",
        "ESD": "emgpod:TPD4E001DRL", "NFET": "Transistor_FET:AO3400A", "SCHOTTKY": "Device:D_Schottky",
        "FPC20": "Connector_Generic_MountingPin:Conn_01x20_MountingPin",
        "JST_PH2": "Connector_Generic_MountingPin:Conn_01x02_MountingPin", "TANT22U": "Device:C_Polarized"}
@@ -295,14 +296,13 @@ def afe_sheet(s, X):
 
     # ---- strip connector
     jn = {1: "BIAS", 2: P + "SHIELD", 19: P + "SHIELD", 20: P + "SHIELD", "MP": "GND"}
-    for ch in range(1, 9):
-        jn[1 + 2 * ch] = f"{P}E{ch}P"
-        jn[2 + 2 * ch] = f"{P}E{ch}N"
+    for k in range(16):                      # connector pin 3+k runs straight to converter pin 1+k
+        jn[3 + k] = f"{P}E{parts.ADS1298_PINS[1 + k][0][2:]}"
     j = d.add("FPC20", f"J{b}", 60.96, 58.42, 0, jn, ref_at=(60.96, 31.75, ""), val_at=(66.5, 58.42, "left"))
     for pin in range(1, 21):
         d.stub(j, pin, 5.08)
     d.stub(j, "MP", 2.54)
-    s.text("Strip tail connector, 20 way 0.5 mm.\nPin 1 bias, pins 3-18 the eight pairs,\npins 2, 19, 20 shield.",
+    s.text("Strip tail connector, 20 way 0.5 mm.\nPin 1 bias, pins 3-18 the eight pairs\n(channel 8 first), pins 2, 19, 20 shield.",
            (66.5, 62.0), 1.1, justify="left top")
 
     # ---- ESD arrays at the connector
@@ -365,22 +365,32 @@ def afe_sheet(s, X):
            (140.0, 236.0), 1.1, justify="left top")
 
     # ---- input network: series resistor in each line, capacitor at the converter pin
-    s.text("Series resistors 47k: any path through the skin\ncrosses two of them (see OPEN.md)", (119.38, 86.0), 1.1,
+    s.text("Series resistors 47k (arrays of four): any path through\nthe skin crosses two of them (see OPEN.md)", (119.38, 86.0), 1.1,
            justify="left top")
     order = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
     caps = []
-    for i, pin in enumerate(order):
-        name = parts.ADS1298_PINS[pin][0]            # IN1P, IN1N, ...
-        ch, pol = name[2], name[3]
-        y = u.p(pin)[1]
-        e, n = f"{P}E{ch}{pol}", P + name
-        r = d.add("RSKIN", f"R{b + 1 + i}", 139.7, y, 90, {1: e, 2: n},
-                  ref_at=(139.2, y - 1.9, "right"), val_at=(140.3, y - 1.9, "left"))
-        s.wire((121.92, y), r.p(1))
-        s.label(e, (121.92, y))
-        s.wire(r.p(2), u.p(pin))
-        s.label(n, (147.32, y))
-        caps.append((n, [("C47P", f"C{b + 1 + i}")], ""))
+    for g in range(4):                       # one array per four neighbouring converter pins
+        pins = order[4 * g:4 * g + 4]        # top to bottom on the sheet
+        m = (pins[0] - 1) // 4               # array 0 serves converter pins 1-4, and so on
+        ys = [u.p(p)[1] for p in pins]
+        rn_nets = {}
+        for p in pins:
+            name = parts.ADS1298_PINS[p][0]
+            i = (p - 1) % 4
+            rn_nets[1 + i] = f"{P}E{name[2:]}"
+            rn_nets[8 - i] = P + name
+        yc = (ys[0] + ys[-1]) / 2
+        rn = d.add("RN47K", f"RN{b + 1 + m}", 139.7, yc, 0, rn_nets,
+                   ref_at=(139.7, ys[0] + 3.2, ""), val_at=(139.7, ys[2] + 3.2, ""))
+        for p, y in zip(pins, ys):
+            name = parts.ADS1298_PINS[p][0]
+            i = (p - 1) % 4
+            assert abs(rn.p(1 + i)[1] - y) < 1e-6 and abs(rn.p(8 - i)[1] - y) < 1e-6
+            s.wire((121.92, y), rn.p(1 + i))
+            s.label(f"{P}E{name[2:]}", (121.92, y))
+            s.wire(rn.p(8 - i), u.p(p))
+            s.label(P + name, (149.86, y))
+            caps.append((P + name, [("C47P", f"C{b + 1 + order.index(p)}")], ""))
     s.text("Filter capacitors at the converter input pins (47 pF C0G)", (246.38, 27.0), 1.5, bold=True)
     d.bank(248.92, 48.26, caps[:8], 12.7)
     d.bank(248.92, 78.74, caps[8:], 12.7)
@@ -482,6 +492,7 @@ def build(directory, date):
               "Open questions are in OPEN.md.", (160.0, 60.96), 1.3, justify="left top")
     for sh in [root] + sheets:
         sh.write(directory)
+        PARTS.update({r: v for r, v in sh.footprints.items() if not r.startswith("#")})
     # consistency of the label scopes
     for net, files in WHERE.items():
         if net in POWER:

@@ -252,6 +252,7 @@ class Sheet:
         self.endpoints = []       # label anchors: wires are split there
         self.pinpts = []          # pin positions
         self.pwr = 0
+        self.footprints = {}
         self.n = 0
 
     def _id(self, kind):
@@ -268,6 +269,7 @@ class Sheet:
         part = Part(lib_id, ref, r(x), r(y), rot)
         assert ref not in self.parts, ref
         self.parts[ref] = part
+        self.footprints[ref] = (footprint, value, in_bom)
         fa = 90 if rot in (90, 270) else 0          # stored angle that renders horizontally
         rx, ry, rj = ref_at or (x, y - 3.0, "")
         vx, vy, vj = val_at or (x, y + 3.0, "")

@@ -96,6 +96,12 @@ def build_symbols():
                right=[_p(T, 6), None, None, _p(T, 3)], width=12.7, footprint="Package_TO_SOT_SMD:SOT-563",
                datasheet=DS["TPD4E001"],
                description="4-channel low-leakage ESD array, SOT-563. Pins from TI SLLS682P.")
+    # Four isolated resistors, 0402 x 4 convex. Uniroyal 4D02 specification, section 3.1: each resistor
+    # joins the two terminals facing each other (1-8, 2-7, 3-6, 4-5).
+    box_symbol("R_Array_4", "RN", left=[(4, "", "passive"), (3, "", "passive"), (2, "", "passive"), (1, "", "passive")],
+               right=[(5, "", "passive"), (6, "", "passive"), (7, "", "passive"), (8, "", "passive")],
+               pitch=5.08, width=10.16, footprint="Resistor_SMD:R_Array_Convex_4x0402",
+               description="Four isolated resistors: 1-8, 2-7, 3-6, 4-5")
     for rail in ("AVDD", "VBAT"):
         power_symbol(rail)
 
@@ -124,6 +130,8 @@ CAT = {
     "R10K": ("10k", FP_R0402, "C25744", "0402WGF1002TCE"),
     # series resistor in every skin-facing line (16 sense lines per converter and the bias line)
     "RSKIN": ("47k", FP_R0402, "C25792", "0402WGF4702TCE"),
+    # the same 47k as a four-resistor array at 0.5 mm pitch, for the 16 sense lines of each converter
+    "RN47K": ("47k x4", "Resistor_SMD:R_Array_Convex_4x0402", "C2028", "4D02WGJ0473TCE"),
     "R100K": ("100k", FP_R0402, "C25741", "0402WGF1003TCE"),
     "R1M": ("1M", FP_R0402, "C26083", "0402WGF1004TCE"),
     "R12_0805": ("12R", "Resistor_SMD:R_0805_2012Metric", "C17445", "0805W8F120JT5E"),
