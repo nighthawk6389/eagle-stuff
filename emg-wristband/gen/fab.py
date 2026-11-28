@@ -30,6 +30,10 @@ LAYERS = "F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mas
 # is applied here: every polarised part has to be looked at in JLCPCB's placement preview (OPEN.md).
 ROTATION_FIX = {}
 
+# JLCPCB wants the centre of the part. KiCad's library footprints have their origin there; Seeed's XIAO
+# footprint has it at a corner of the module, so for it the centre of the body outline is written.
+BODY_CENTRE = ("XIAO-nRF52840-SMD-noNFC", "XIAO-nRF52840-SMD")
+
 
 def check_nets(board):
     """Every pad of the board against gen/design.py. Returns the number of pads checked."""
@@ -138,7 +142,7 @@ def main():
         if fp.GetAttributes() & pcbnew.FP_EXCLUDE_FROM_POS_FILES:
             continue
         name = str(fp.GetFPID().GetLibItemName())
-        p = fp.GetPosition()
+        p = fp.GetCourtyard(pcbnew.F_CrtYd).BBox().Centre() if name in BODY_CENTRE else fp.GetPosition()
         rot = (fp.GetOrientationDegrees() + ROTATION_FIX.get(name, 0)) % 360
         rows.append((fp.GetReference(), fp.GetValue(), name, round(pcbnew.ToMM(p.x), 4), round(-pcbnew.ToMM(p.y), 4),
                      rot, "top"))

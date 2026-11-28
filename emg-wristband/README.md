@@ -75,7 +75,8 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
 Any change to `gen/board.py` moves many of the autorouted tracks on the next run. The board in `pod/`
 is the result of one run, and `out/fab/` was made from exactly that file.
 
-Layers: 1 signal and parts, 2 unbroken ground, 3 supplies (+3V3 above y = 27.6 mm, AVDD below, ground
+Layers: 1 signal and parts, 2 ground (one plane, no splits, but with slots where via clearances
+merge: OPEN.md, R6), 3 supplies (+3V3 above y = 27.6 mm, AVDD below, ground
 fill elsewhere), 4 signal. No parts on the back; the four SWD rescue pads are there, under the XIAO.
 
 ## Sheets

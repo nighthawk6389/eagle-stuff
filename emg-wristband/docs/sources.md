@@ -47,7 +47,7 @@ column is what `gen/board.py` uses.
 | Track and spacing 0.09 / 0.09 mm | Tracks 0.127 mm and up, clearance 0.127 mm |
 | Via hole 0.15 mm minimum, diameter at least 0.1 mm larger; holes of 0.25 mm or less cost more below 0.45 mm diameter | One via size: 0.3 mm hole, 0.5 mm diameter |
 | Via hole to track 0.2 mm; via hole to via hole 0.2 mm | 0.2 mm and 0.25 mm set as rules |
-| Plated pad hole to track 0.28 mm (0.35 mm recommended); pad annular ring 0.2 mm | Only the two motor wire pads (0.48 mm hole, 1.0 mm pad): ring 0.26 mm, so tracks stay 0.39 mm from the hole |
+| Plated pad hole to track 0.28 mm (0.35 mm recommended); pad annular ring 0.2 mm | Only the two motor wire pads (0.7 mm hole, 1.7 mm pad, measured on the board): ring 0.5 mm, so tracks stay 0.63 mm from the hole |
 | Copper to a routed board edge 0.2 mm | 0.3 mm |
 | SMD pad to pad, different nets, 0.15 mm; pad to track 0.1 mm | Closest pads are the ESD arrays' at 0.15 mm (library footprint); pad to track 0.127 mm |
 | Inner layer: via hole to copper 0.2 mm | Planes keep 0.2 mm from the via pad, 0.3 mm from the hole |

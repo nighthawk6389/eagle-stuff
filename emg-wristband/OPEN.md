@@ -120,6 +120,9 @@ Bring-up check either way: measure DVDD current with AVDD off.
 
 ## Firmware must do these (the hardware depends on it)
 
+- Converter B has no clock after a pin reset: RESET is shared and clears converter A's CLK_EN bit. Set
+  CLK_EN on A again, wait 2^18 clock periods (the datasheet's reset timing only starts once the
+  external clock is valid), then reset B with the SPI RESET command.
 - Hold SCLK, MOSI, both CS, START and RESET low while AVDD comes up; then wait 2^18 clock periods
   (128 ms at 2.048 MHz) and for VCAP1, then pulse RESET.
 - Set CLK_EN on converter A before talking to converter B, which has no clock until then.
@@ -129,6 +132,80 @@ Bring-up check either way: measure DVDD current with AVDD off.
 - Refuse to stream while USB is detected (second layer behind the interlock).
 - Drive P0.13 low for the 100 mA charge current.
 - Do not enable pull-ups toward the converters while AVDD is off.
+
+## Independent review, 2026-11-28: findings not yet acted on
+
+A second reviewer (a fresh AI session with only the files, asked to act as a PCB design engineer)
+went through the schematic, the board and the outputs against published guidance (SparkFun's layout
+tutorials, TI SBAS459K sections 11-12, TI SLVA680A, the antenna maker's sheet, JLCPCB's pages). It found
+nothing that stops the circuit working, and the pin maps of every polarised part and of the XIAO
+footprint correct. "Confirmed" below means I re-measured it on the board or re-read the datasheet
+line; "reviewer only" means I did not. One finding is already fixed: the placement file gave the
+XIAO's corner instead of its centre (now 138.575, -69.9).
+
+Needs the owner's decision (changes the schematic or the outline, then a re-route):
+
+- **R1. Nothing ever powers the converters down, and the pod has no off switch.** PWDN of both is tied
+  to +3V3 (R120, R220), which is live whenever a cell is connected. Confirmed: SBAS459K lists 0.5 mA
+  DVDD current per converter at 3 V in operation and 10 uW only in power-down; what DVDD draws with
+  AVDD off is not specified. If the digital sections run, about 1 mA drains a 200 mAh cell in about
+  eight days. +3V3 also goes from the XIAO straight into the plane, so the DVDD current cannot be
+  measured without lifting a pin. Reviewer's fix: tie both PWDN pins to the regulator's enable net
+  (AVDD_EN) instead of +3V3, raise R2 to 1 Mohm, and put a 0 ohm link in the +3V3 feed.
+- **R2. Antenna.** Seeed's coordinate sheet puts the chip antenna at board (29.1, 8.1); the copper-free
+  window I drew matches the one in Seeed's own XIAO layout to 0.2 mm (reviewer only). The trouble is
+  outside it: pod ground starts 2.1 mm in front of the antenna on four layers, and closes above and
+  below. The antenna's sheet asks for a board edge and 3 mm clear. Reviewer's fix: drop DRDY_B, move
+  START to D3, delete the D6 land and cut a notch from the top edge down to y = 12.4 over x 25 to 32.
+  Lesser option: widen the window and compare signal strength with a bare XIAO.
+- **R3. SPI lines float while the nRF is in reset or its bootloader** (no pull resistors on CS_A, CS_B,
+  SCLK, MOSI, START, RESET; confirmed in the net tables), on converters whose DVDD is live. Reviewer's
+  fix: 100k pull-ups on both CS lines, pull-downs on START and SCLK.
+- **R4. ESD arrays sit on 10 to 18 mm stubs with two vias** (TI SLVA680A: no stubs, no layer change),
+  and a clamp channel that fails short ties one electrode to ground or AVDD with only R125 (47k) left
+  in the bias path: up to 64 uA, above the 50 uA figure quoted earlier. Geometry is as built; the
+  fault case is the reviewer's reasoning and I agree with it.
+- **R5. The "filter capacitor at the converter pin" is 8.5 to 19 mm of track from the pin** (fan-out on
+  the back). Irrelevant at EMG frequencies; possibly not for the 2.4 GHz transmitter 20 mm away.
+  Reviewer's option: a 0201 C0G across each pair at the pin, or accept and test.
+
+Layout faults to fix at the next re-route (no decision needed):
+
+- **R6. The ground plane has slots.** Confirmed: on layers 2 and 3 the clearances of the 16 input vias
+  under each converter merge into one opening about 8.4 x 1.8 mm, because 1.0 mm via pitch leaves a
+  0.1 mm web against a 0.2 mm minimum. The reviewer measured a similar opening of about 6.4 x 3.6 mm
+  under each strip connector. No top-side line crosses them. Fix: 0.15 mm plane clearance there.
+- **R7. One line of channels 4 and 5 of each converter runs over the digital supply plane.**
+  Confirmed: the fan-out lane at y = 26.7 (IN5P, IN4N) lies over +3V3 for 9.6 mm, its partners at
+  y = 27.9 over AVDD; the split is at 27.6. Fix: end the +3V3 pour above the converters and feed the
+  two DVDD pins by a track.
+- **R8. Vias under bare metal of the XIAO.** Confirmed: a ground via at (29.25, 14.25) and an ADS_RESET
+  via at (30.32, 15.18) lie under the module's two NFC pads, with only solder mask between. The
+  reviewer also reports an SWCLK via 0.09 mm into the land of a USB shell leg. Fix: keep vias out
+  from under the module's exposed pads; restoring the two NFC lands would do it for those.
+- **R9. Vias close to pads.** Confirmed: about 90 of the 466 vias have their ring within 0.15 mm of a
+  pad (all the ESD array pins at 0.125 mm), about 210 within 0.35 mm, so plugged vias are not an
+  option and the mask web beside the array pads is at JLCPCB's 0.10 mm minimum.
+- **R10. Pour connections are solid everywhere** (confirmed in `gen/finish.py` and `gen/board.py`), so by the
+  reviewer's count 81 small parts have one pad in a pour and one on a thin track (tombstoning and
+  rework risk). Fix: thermal relief on the two outer pours.
+- **R11. Silkscreen text is 0.8 mm high with 0.12 mm strokes**; the reviewer reads JLCPCB's minimum as
+  1.0 mm and 0.15 mm. Only six reference designators are printed and five lie under their parts.
+- Smaller: R5 (motor resistor, 0805) dissipates about 150 mW if the motor stalls at 4.2 V; no 3V3 pad
+  beside the SWD pads; nowhere to clip a scope ground.
+
+Mechanical, from datasheets (reviewer only unless stated):
+
+- Tallest part is the battery connector J1, 5.5 mm (JST). The XIAO's height is not published.
+- Cell (the design document says about 200 mAh; no part chosen) under the board: about 11 mm before
+  shell. On top over the converters: about 8 mm, resting on a tantalum. Not near x 23 to 34, y 0 to 15
+  (antenna). Under the board it lies on the vias, the SWD pads and the motor joints: insulate it.
+- The battery plug leaves over the top edge and needs 8 to 10 mm of shell beyond it.
+- The XIAO's reset button is at about (47.1, 4.2): reachable only through a hole from above.
+- Parts stand within 0.3 to 0.45 mm of every edge, so a panel needs routed tabs (V-cut needs 0.4 mm
+  copper clearance, the board has 0.3) and there is no lip to clamp. No mounting holes, no fiducials.
+- The strip tails enter with contacts facing the pod; whether the pod sits beside or on top of the
+  strip decides which face of the tail carries them. The FH12 is rated for 20 insertions.
 
 ## Layout
 
@@ -157,7 +234,7 @@ ground.
   bare one at the same distance. If it is poor: cut a slot in the board under the antenna, or turn
   the module round so the antenna reaches the right edge and plug USB in across the board.
 - **Supplies share layer 3.** +3V3 above y = 27.6 mm, the 3.0 V analog rail below, ground fill in the
-  rest. Layer 2 is ground with no splits; its only openings are via holes and the antenna window.
+  rest. Layer 2 is ground with no splits, but it is not unbroken: see R6 in the review section.
 - **Four bare pads on the back** (SWDIO, SWCLK, NRST, GND) under the XIAO's own SWD pads, for a probe.
   No parts are assembled there, so assembly stays single-sided.
 - **"Route each pair together"** holds from connector to converter: the two lines of a pair are
