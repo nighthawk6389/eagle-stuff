@@ -613,6 +613,11 @@
 		(stroke (width 0) (type default))
 		(uuid "404b4594-41e6-5dc1-9000-84cb10dba342")
 	)
+	(wire
+		(pts (xy 185.42 139.7) (xy 187.96 139.7))
+		(stroke (width 0) (type default))
+		(uuid "15682791-7015-5798-b478-a2e2c890332c")
+	)
 	(text "Seeed XIAO nRF52840 Sense, soldered down as a module"
 		(exclude_from_sim no)
 		(at 25.4 30 0)
@@ -1700,9 +1705,60 @@
 			)
 		)
 	)
-	(text "TP19 to TP22: SWD access for rescuing the bootloader with a borrowed probe."
+	(symbol
+		(lib_id "emgpod:TestPoint")
+		(at 185.42 139.7 90)
+		(unit 1)
 		(exclude_from_sim no)
-		(at 175.26 143 0)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "739c1180-e1e3-52eb-8f99-5a0051f7561e")
+		(property "Reference" "TP23" (at 180.92 139.7 90) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "TestPoint" (at 185.42 142.7 90) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
+			(at 185.42 139.7 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "Datasheet" "" (at 185.42 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 185.42 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "d8817007-1b27-5ffc-b082-ace9436fc024"))
+		(instances
+			(project "emg-pod"
+				(path "/c39ecf42-631f-515d-80d2-ef1f48bdd446/9d7aa645-44f8-58d7-b672-e59d0cf3b324"
+					(reference "TP23")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "emgpod:+3V3")
+		(at 187.96 139.7 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "3b2b86f5-ac33-5272-87d8-67284efbd6ff")
+		(property "Reference" "#PWR0312" (at 187.96 139.7 90) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3" (at 191.26 139.7 90) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "" (at 187.96 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 187.96 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 187.96 139.7 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "bdb1b551-a6fd-51f1-8f74-34aab81dfcc9"))
+		(instances
+			(project "emg-pod"
+				(path "/c39ecf42-631f-515d-80d2-ef1f48bdd446/9d7aa645-44f8-58d7-b672-e59d0cf3b324"
+					(reference "#PWR0312")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(text "TP19 to TP23, on the back: SWD, ground and 3.3 V for a borrowed probe."
+		(exclude_from_sim no)
+		(at 175.26 144.3 0)
 		(effects (font (size 1.1 1.1)) (justify left top))
 		(uuid "b370cf3c-1d0f-5b59-8ce3-fa4be482b13e")
 	)

@@ -25,6 +25,7 @@ LIB = {"RN47K": "emgpod:R_Array_4", "ADS1298": "emgpod:ADS1298IPAG", "XIAO": "em
        "JST_PH2": "Connector_Generic_MountingPin:Conn_01x02_MountingPin", "TANT22U": "Device:C_Polarized"}
 FP_TP = "emgpod:TestPoint_Pad_D1.0mm_bare"     # KiCad's 1 mm pad without its silkscreen ring (labels go there)
 FP_MOTOR = "Connector_Wire:SolderWire-0.127sqmm_1x02_P3.7mm_D0.48mm_OD1mm"
+FP_POST = "TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm"     # plated hole for a wire loop: scope ground
 
 
 def lib_for(kind):
@@ -140,8 +141,8 @@ class Draw:
                 self.s.text(note, (x_first - 2.0, y + note_dy), 1.0, justify="left top")
         return x
 
-    def tp(self, ref, net, x, y):
-        p = self.s.place("Connector:TestPoint", ref, "TestPoint", x, y, 90, footprint=FP_TP, in_bom=False,
+    def tp(self, ref, net, x, y, footprint=FP_TP):
+        p = self.s.place("Connector:TestPoint", ref, "TestPoint", x, y, 90, footprint=footprint, in_bom=False,
                          show_value=False, ref_at=(x - 4.5, y, "right"))
         self.nets(p, {1: net})
         self.stub(p, 1, 2.54)
@@ -221,7 +222,7 @@ def power_sheet(s):
     # motor
     s.text("Vibration motor (wired coin motor on two pads)", (127.0, 86.5), 1.8, bold=True)
     s.power("VBAT", (152.4, 93.98))
-    r5 = d.add("R12_0805", "R5", 152.4, 97.79, 0, {1: "VBAT", 2: "MOT_P"})
+    r5 = d.add("R12_1206", "R5", 152.4, 97.79, 0, {1: "VBAT", 2: "MOT_P"})
     d1 = d.add("SCHOTTKY", "D1", 152.4, 110.49, 270, {1: "MOT_P", 2: "MOT_N"})
     s.wire(r5.p(2), d1.p(1))
     s.wire((152.4, 101.6), (165.1, 101.6), (165.1, 104.14), (170.18, 104.14))
@@ -243,13 +244,16 @@ def power_sheet(s):
            "Its datasheet gives 3.0 V rated, 2.7 to 3.3 V operating, 70 mA running, 120 mA starting.\n"
            "R5 drops the battery (up to 4.2 V) into that range: 4.2 V x 43/(43+12) = 3.3 V,\n"
            "taking the running motor as 3.0 V / 70 mA = 43 ohm. Recalculate R5 for any other motor.\n"
-           "D1 is the flyback diode, R6 the gate pull-down.", (127.0, 140.0), 1.1, justify="left top")
+           "Stalled, the motor is about 3.0 V / 120 mA = 25 ohm: 4.2 V / 37 ohm = 114 mA, 0.15 W in R5,\n"
+           "hence a 1206 (0.25 W). D1 is the flyback diode, R6 the gate pull-down.",
+           (127.0, 140.0), 1.1, justify="left top")
 
     # test points
     s.text("Test points", (213.36, 33.0), 1.8, bold=True)
     for i, (ref, net) in enumerate([("TP1", "VBAT"), ("TP2", "AVDD"), ("TP3", "+3V3"), ("TP4", "GND"),
-                                    ("TP5", "GND")]):
-        d.tp(ref, net, 223.52, 43.18 + 7.62 * i)
+                                    ("TP5", "GND"), ("TP6", "GND")]):
+        d.tp(ref, net, 223.52, 43.18 + 7.62 * i, FP_POST if ref == "TP6" else FP_TP)
+    s.text("TP6: a plated 1 mm hole for a wire loop,\nto clip a scope ground to.", (213.36, 89.0), 1.1, justify="left top")
 
 
 def mcu_sheet(s):
@@ -292,11 +296,11 @@ def mcu_sheet(s):
            (25.4, 151.0), 1.1, justify="left top")
     s.text("Test points", (175.26, 30.0), 1.8, bold=True)
     tps = ["SCLK", "MOSI", "MISO", "CS_A", "CS_B", "DRDY_A", "DRDY_B", "ADS_START", "ADS_RESET",
-           "SWDIO", "SWCLK", "NRST", "GND"]
+           "SWDIO", "SWCLK", "NRST", "GND", "+3V3"]
     for i, net in enumerate(tps):
         d.tp(f"TP{10 + i}", net, 185.42, 40.64 + 7.62 * i)
-    s.text("TP19 to TP22: SWD access for rescuing the bootloader with a borrowed probe.",
-           (175.26, 143.0), 1.1, justify="left top")
+    s.text("TP19 to TP23, on the back: SWD, ground and 3.3 V for a borrowed probe.",
+           (175.26, 144.3), 1.1, justify="left top")
 
 
 # Which electrode line each ESD channel protects. An array keeps two whole pairs; the order inside it

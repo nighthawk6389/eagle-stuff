@@ -51,7 +51,7 @@ NOTCH = (25.0, 32.0, 12.4)       # x from, x to, depth: the board is cut away un
 # the two NFC pads and the four USB shell legs, each with a margin. No top copper and no via under them.
 MODULE_METAL = [(27.75, 12.85, 30.80, 16.45), (46.67, 13.45, 49.05, 14.93), (46.67, 4.85, 49.05, 6.33),
                 (42.44, 13.43, 44.87, 14.95), (42.44, 4.83, 44.87, 6.35)]
-BOTTOM = {"TP19", "TP20", "TP21", "TP22"}      # bare pads on the back; no parts are assembled there
+BOTTOM = {"TP19", "TP20", "TP21", "TP22", "TP23"}      # bare pads on the back; no parts are assembled there
 
 
 def V(x, y):
@@ -115,7 +115,7 @@ def placement():
     P["J1"] = (6.0, 5.6, 180)
     # ---- motor driver, on the XIAO side of the board
     P["J2"] = (13.0, 2.2, 0)
-    P["R5"] = (13.6, 5.0, 0)
+    P["R5"] = (13.1, 5.0, 0)
     P["D1"] = (17.9, 5.0, 0)
     P["Q2"] = (22.6, 3.2, 0)
     P["R6"] = (22.6, 6.4, 0)
@@ -150,6 +150,8 @@ def placement():
     P["TP20"] = (47.0, 13.6, 0)
     P["TP21"] = (44.5, 6.2, 0)
     P["TP22"] = (44.5, 13.6, 0)
+    P["TP23"] = (44.5, 17.3, 0)                       # 3.3 V for the probe, on the back with the SWD pads
+    P["TP6"] = (6.5, 20.8, 0)                         # plated hole for a scope ground wire
     P["TP30"] = (2.0, 18.0, 0)
     P["TP31"] = (BX["A"] - 7.75, 37.3, 0)            # bias output: beside the bias parts, below converter A
     # ---- the two converter blocks, identical
@@ -580,6 +582,18 @@ def main():
         path(pts, names[pin], width=wd)
         via((xv, lane), names[pin])
         track((xv, lane), (xl, lane), names[pin], layer=BCU, width=wd)      # the routers carry on from its end
+    # the XIAO's 3.3 V pin: to the link R21, to its test point, and through a via to the pad on the back
+    for ref, pin in (("U1", 12), ("R21", 1), ("TP3", 1), ("TP23", 1)):
+        expect(ref, pin, "+3V3")
+    p12, r21, tp3, tp23 = pad_xy("U1", 12), pad_xy("R21", 1), pad_xy("TP3", 1), pad_xy("TP23", 1)
+    assert p12[0] - 1.0 < r21[0] < p12[0] + 1.0 and r21[1] > p12[1], (p12, r21)
+    track(r21, (r21[0], 19.2), "+3V3", width=0.25)                  # up into the land
+    v33 = (41.9, 20.1)
+    track((41.6, 19.0), v33, "+3V3", width=0.25)                    # out of the land to a via
+    track(tp3, v33, "+3V3", width=0.25)
+    via(v33, "+3V3")
+    path([v33, (v33[0], 19.4), (tp23[0] - 0.5, tp23[1]), tp23], "+3V3", BCU, width=0.25)
+
     # the enable divider hangs on the AFE_EN pad
     expect("R1", 1, "AFE_EN"), expect("U1", 9, "AFE_EN"), expect("R1", 2, "AVDD_EN"), expect("R2", 1, "AVDD_EN")
     a1 = pad_xy("R1", 1)

@@ -135,7 +135,8 @@ CAT = {
     "RN47K": ("47k x4", "Resistor_SMD:R_Array_Convex_4x0402", "C2028", "4D02WGJ0473TCE"),
     "R100K": ("100k", FP_R0402, "C25741", "0402WGF1003TCE"),
     "R1M": ("1M", FP_R0402, "C26083", "0402WGF1004TCE"),
-    "R12_0805": ("12R", "Resistor_SMD:R_0805_2012Metric", "C17445", "0805W8F120JT5E"),
+    # motor series resistor: 1206, 0.25 W, because a stalled motor puts about 0.15 W into it
+    "R12_1206": ("12R", "Resistor_SMD:R_1206_3216Metric", "C17913", "1206W4F120JT5E"),
     "C47P": ("47p", FP_C0402, "C1567", "0402CG470J500NT"),
     "C1N": ("1n", FP_C0402, "C1523", "0402B102K500NT"),
     "C1N5": ("1n5", FP_C0603, "C1595", "0603B152K500NT"),

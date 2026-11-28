@@ -892,6 +892,11 @@
 		(stroke (width 0) (type default))
 		(uuid "d83e2de0-ac89-5121-93aa-785aa069e458")
 	)
+	(wire
+		(pts (xy 223.52 81.28) (xy 226.06 81.28))
+		(stroke (width 0) (type default))
+		(uuid "3935d526-5bc1-55ce-b7f8-a0160842e225")
+	)
 	(text "Battery input and analog rail"
 		(exclude_from_sim no)
 		(at 25.4 33 0)
@@ -1661,14 +1666,14 @@
 		(uuid "f17f7106-32bc-596e-b989-a613e8c0bae4")
 		(property "Reference" "R5" (at 154.7 96.52 0) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "12R" (at 154.7 99.06 0) (effects (font (size 1.27 1.27)) (justify left)))
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
 			(at 152.4 97.79 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" "" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(property "Description" "" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "LCSC" "C17445" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "0805W8F120JT5E" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17913" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "1206W4F120JT5E" (at 152.4 97.79 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "e426c2c2-9708-50dd-8eea-fb180fb6b7e7"))
 		(pin "2" (uuid "81873072-a8c7-5ec3-a3c4-a57668923b9e"))
 		(instances
@@ -1867,7 +1872,7 @@
 			)
 		)
 	)
-	(text "Suggested motor: Leader LCM1027B3605F (LCSC C7528806), a 10 mm coin motor on wire leads.\nIts datasheet gives 3.0 V rated, 2.7 to 3.3 V operating, 70 mA running, 120 mA starting.\nR5 drops the battery (up to 4.2 V) into that range: 4.2 V x 43/(43+12) = 3.3 V,\ntaking the running motor as 3.0 V / 70 mA = 43 ohm. Recalculate R5 for any other motor.\nD1 is the flyback diode, R6 the gate pull-down."
+	(text "Suggested motor: Leader LCM1027B3605F (LCSC C7528806), a 10 mm coin motor on wire leads.\nIts datasheet gives 3.0 V rated, 2.7 to 3.3 V operating, 70 mA running, 120 mA starting.\nR5 drops the battery (up to 4.2 V) into that range: 4.2 V x 43/(43+12) = 3.3 V,\ntaking the running motor as 3.0 V / 70 mA = 43 ohm. Recalculate R5 for any other motor.\nStalled, the motor is about 3.0 V / 120 mA = 25 ohm: 4.2 V / 37 ohm = 114 mA, 0.15 W in R5,\nhence a 1206 (0.25 W). D1 is the flyback diode, R6 the gate pull-down."
 		(exclude_from_sim no)
 		(at 127 140 0)
 		(effects (font (size 1.1 1.1)) (justify left top))
@@ -2133,6 +2138,63 @@
 				)
 			)
 		)
+	)
+	(symbol
+		(lib_id "emgpod:TestPoint")
+		(at 223.52 81.28 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "4d680ee5-daac-55bb-8821-8de06efa6531")
+		(property "Reference" "TP6" (at 219.02 81.28 90) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "TestPoint" (at 223.52 84.28 90) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm"
+			(at 223.52 81.28 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "Datasheet" "" (at 223.52 81.28 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 223.52 81.28 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "7aafd165-512e-5e25-ad06-3f3d2e13e780"))
+		(instances
+			(project "emg-pod"
+				(path "/c39ecf42-631f-515d-80d2-ef1f48bdd446/1e03fed2-a65b-578e-ba81-e0734a910437"
+					(reference "TP6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "emgpod:GND")
+		(at 226.06 81.28 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "e28a66dd-cbf3-50d7-ad27-05daeac8405d")
+		(property "Reference" "#PWR0223" (at 226.06 81.28 90) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 229.36 81.28 90) (effects (font (size 1.27 1.27)) (justify right)))
+		(property "Footprint" "" (at 226.06 81.28 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 226.06 81.28 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 226.06 81.28 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "d37f70e5-dbb1-5e01-b087-272512bb6b56"))
+		(instances
+			(project "emg-pod"
+				(path "/c39ecf42-631f-515d-80d2-ef1f48bdd446/1e03fed2-a65b-578e-ba81-e0734a910437"
+					(reference "#PWR0223")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(text "TP6: a plated 1 mm hole for a wire loop,\nto clip a scope ground to."
+		(exclude_from_sim no)
+		(at 213.36 89 0)
+		(effects (font (size 1.1 1.1)) (justify left top))
+		(uuid "f3e894b8-3d77-512f-9114-820c4181c373")
 	)
 	(embedded_fonts no)
 )

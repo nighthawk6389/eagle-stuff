@@ -253,7 +253,7 @@ TP_LABEL = {"VBAT": "BAT", "AVDD": "AVDD", "+3V3": "3V3", "GND": "GND", "SCLK": 
 
 
 # where a test point's label goes if not above it: offset from the pad (mm)
-LABEL_AT = {"TP31": (0, 1.25), "TP14": (0.35, 1.25), "TP16": (-0.35, 1.25), "TP3": (1.75, 0)}
+LABEL_AT = {"TP31": (0, 1.25), "TP14": (0.35, 1.25), "TP16": (-0.35, 1.25), "TP3": (1.75, 0), "TP6": (0, -1.9)}
 
 
 def silkscreen(brd):
