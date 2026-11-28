@@ -1,70 +1,80 @@
 # Open items: main pod rev A
 
-State on 2026-11-27, after the first schematic pass. Nothing here is laid out yet.
+State on 2026-11-28, after the first schematic pass and the owner's decisions. Nothing here is laid out yet.
 "Checked" means read from the document named in `docs/sources.md`; anything else is flagged.
 
-## Decisions for the owner
+## Decided by the owner on 2026-11-28
 
-### 1. No IMU and no microphone as drawn, because JLCPCB marks them "Standard Only"
+1. **Sense XIAO on Standard assembly.** The XIAO is now the Sense version, JLCPCB C17401557 (123 in
+   stock, "Standard Only"), so the whole order is Standard assembly. This overrides the handoff's
+   "no Standard Only parts" rule for this one part. IMU and microphone are on the module; the 11th pin
+   carries DRDY_B. Every other BOM line is still cleared for Economic.
+2. **Series resistors: 47k** (was the 22k placeholder), on my recommendation. Reasoning below.
+3. **Motor on two wire pads**, accepted.
 
-- XIAO nRF52840 **Sense**: JLCPCB C17401557, 123 in stock, **Standard Only**. The handoff rules it out.
-- Plain XIAO nRF52840: **C17209540**, 352 in stock, Economic and Standard, about $10.77. This is what the
-  schematic uses. The number in the handoff, C37327670, is a second listing of the same board with 0 stock.
-- The fallback IMU cannot be placed either: LSM6DS3TR-C (C967633) is Standard Only, and so were all
-  13 other 6-axis IMUs I checked (LSM6DSO, LSM6DSL, BMI270, ICM-42607, ICM-42670, QMI8658, MPU-6500, ...).
-- So the 11th pin carries DRDY_B, and rev A as drawn has no motion sensor and no push-to-talk microphone.
+### What Standard assembly changes for the layout
 
-The Sense and the plain XIAO share one footprint and pinout, so the schematic is the same either way.
-Choose one:
+JLCPCB's capabilities page gives 70 x 70 mm as the smallest single board for Standard assembly, and
+says it adds 5 mm process rails to smaller boards. The pod is about 40 x 45 mm, so it needs rails or a
+small panel. I have this from a search summary of jlcpcb.com/capabilities/pcb-assembly-capabilities,
+not from reading the page; confirm it at quote time. To settle at layout.
 
-| Option | Gets | Costs |
-|---|---|---|
-| A. Keep the plain XIAO (as drawn) | Economic assembly, everything placed by JLCPCB | No IMU, no microphone |
-| B. Order Standard assembly and place the Sense | IMU and microphone | Standard-assembly fees for the whole order; change one LCSC number |
-| C. Leave the XIAO off the order and solder a Sense by hand | IMU and microphone at Economic prices | Hand work: 14 edge pads plus the bottom battery and SWD pads (needs holes under them or a hot plate) |
+### Why 47k
 
-### 2. The converters' digital supply stays on while the interlock holds the analog supply off
+- Any current through the wearer goes in through one skin-facing line and out through another, so it
+  crosses two of these resistors: 94k. A fault that puts 3.3 V across that path drives 35 uA; the full
+  4.2 V of the cell, 45 uA. With 22k those were 75 and 95 uA. The 50 uA single-fault figure I am
+  comparing against is the patient-auxiliary-current limit of IEC 60601-1 **as I remember it; I have
+  not read the standard**, and this is a hobby device, not a medical one.
+- Noise cost is small. Two 47k resistors add 0.90 uVrms in the 524 Hz band; the converter itself is
+  1.1 uVrms at 2 kSPS and gain 6 (SBAS459K table 1). Together 1.42 uVrms, against 1.26 with 22k, and
+  against the 2.46 uVrms Meta reports for its whole system.
+- The input filter corner moves to 72 kHz with the 47 pF capacitors, still far above the signal band.
 
-This was the handoff's sequencing question. What the datasheet (SBAS459K) says:
+## Still open: digital supply on while the analog supply is off
 
-- Section 11.1 sets no order between AVDD and DVDD. It asks for all inputs low until supplies are stable,
-  then a reset pulse after 2^18 clock periods and once VCAP1 is above 1.1 V.
-- The recommended-operating table lists AVDD - DVDD from -2.1 V to +3.6 V. With DVDD at 3.3 V and AVDD
-  at 0 V the difference is -3.3 V, outside that row.
-- The absolute-maximum table has no limit between AVDD and DVDD.
+As drawn, DVDD is the XIAO's 3.3 V rail and is always on; the interlock switches only AVDD.
 
-My reading: -2.1 V is exactly the smallest allowed AVDD (1.5 V in bipolar use) minus the largest DVDD
-(3.6 V), so the row describes running conditions, not an off state. A search summary of TI forum
-thread 870302 (ADS1299, the sister part) reports a TI engineer saying the limit "only applies to normal
-operation", **but I could not open the thread to read it myself** (the site refused the request).
-Please read it before ordering:
-https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/870302/ads1299-power-sequencing-digital-and-analog-inputs
+What the owner's saved copy of TI forum thread 870302 (ADS1299, the sister part) says. Two TI engineers:
 
-Why I did not gate both supplies: with DVDD switched off, the MCU could still drive 3.3 V into unpowered
-digital inputs (absolute maximum is DVDD + 0.3 V), and a hardware interlock cannot rely on firmware to
-park those pins. Gating both properly needs a load switch plus a buffer that isolates six lines.
-If TI's answer is "do not", that is the change to make, on the MCU and power sheets only.
+- Ryan Andrews: "The primary concern is that the pins could become damaged if voltage is applied to the
+  pins before DVDD is enabled. For example, if your MCU is powered before DVDD of the ADS1299 is
+  enabled, the MCU SPI/GPIO outputs may apply voltage to the ADS1299 digital inputs, which can damage
+  the device." Pins on pull-ups may rise with the supply. MCU outputs should stay high-impedance until
+  DVDD is up; then reset the part and check its device ID.
+- Alexander Smith: ignoring the power-up sequence most likely leaves the part in an unknown state, with
+  a wrong device ID and false readings.
 
-### 3. Vibration motor: two solder pads, not a placed part
+What that settles: DVDD should not be switched off behind a powered MCU, which is the argument for the
+design as drawn (DVDD and the MCU share one rail, so no input can exceed DVDD). It also supports the
+PWDN pull-ups and the CLKSEL straps.
 
-The coin motors JLCPCB stocks are on wire leads (LCM1027B3605F, C7528806, is listed for Economic
-assembly but is a wired part), so J2 is two wire pads as the handoff allows. R5 (12 ohm) is sized for
-that motor from its datasheet; any other motor needs R5 recalculated. A 3 V motor on a 4.2 V cell with
-no resistor would run above its 3.3 V limit.
+What it does **not** settle: the thread never mentions the AVDD - DVDD row of the operating table
+(-2.1 V to +3.6 V; this design sits at -3.3 V while AVDD is off). My earlier note that TI had said the
+row "only applies to normal operation" came from a search-engine summary and is **not in the thread**;
+treat it as unsupported. My own reading stands (-2.1 V is the lowest allowed AVDD, 1.5 V, minus the
+highest DVDD, 3.6 V, so it describes running conditions; the absolute-maximum table has no such
+limit), but it is a reading, not a statement from TI.
+
+To close it, ask TI on the forum: "ADS1298, AVSS = DGND, DVDD = 3.3 V always on. Is it acceptable to
+hold AVDD and AVDD1 at 0 V for hours (analog LDO disabled) and later power them up and pulse RESET?
+Does the AVDD - DVDD >= -2.1 V row apply while AVDD is off?" If the answer is no, the fix is a load
+switch on DVDD plus a buffer isolating the six MCU-driven lines, on the MCU and power sheets only.
+Bring-up check either way: measure DVDD current with AVDD off.
 
 ## Values that are placeholders or my choice, not from a datasheet
 
 | Part | Value | Status |
 |---|---|---|
-| R101-R116, R201-R216 (sense lines) | 22k | Handoff placeholder, final value 10k to 47k |
-| R125 (bias line) | 22k | My choice: same as the sense lines, so every skin-facing line has the same limit. To be set with them |
-| C101-C116, C201-C216 (input filter) | 47 pF C0G to ground | My choice. Corner 154 kHz with 22k (72 kHz at 47k, 339 kHz at 10k). The datasheet (10.1.3) only says a single pole is usually enough and a wide bandwidth protects common-mode rejection. Every pF here also loads a dry electrode, so smaller may be better |
+| R101-R116, R201-R216 (sense lines) | 47k | Decided 2026-11-28, reasoning above |
+| R125 (bias line) | 47k | Same as the sense lines, so every skin-facing line has the same limit |
+| C101-C116, C201-C216 (input filter) | 47 pF C0G to ground | My choice. Corner 72 kHz with 47k. The datasheet (10.1.3) only says a single pole is usually enough and a wide bandwidth protects common-mode rejection. Every pF here also loads a dry electrode, so smaller may be better |
 | R124, C140 (bias feedback) | 1 Mohm, 1.5 nF | Datasheet "typical values for example only". Loop stability with real electrodes is untested |
 | R20, R121, R221, R123 (series, SCLK / DOUT / CLK) | 33 ohm | My choice; the datasheet says "termination resistors as needed". Can be fitted as 0 ohm |
 | R120, R220 (PWDN pull-up) | 10k | From TI's evaluation board, not the datasheet text |
 | R1, R2, R3, R4, C3 (interlock) | 10k, 100k, 10k, 10k, 100 nF | Calculated on the power sheet from the LP5907 and AO3400A datasheets |
 | R223 (clock pull-down on converter B) | 100k | My choice, so the input is not floating before firmware enables converter A's clock output |
-| R5 (motor) | 12 ohm 0805 | Calculated from the motor datasheet, see item 3 |
+| R5 (motor) | 12 ohm 0805 | Calculated on the power sheet for the Leader LCM1027B3605F (3.0 V rated, 3.3 V maximum, 70 mA). Recalculate for any other motor |
 
 ## Things I assumed and did not prove
 
@@ -112,13 +122,13 @@ no resistor would run above its 3.3 V limit.
   AO3400A pad numbers (its datasheet draws the lead positions and the pin-1 dot but prints no numbers;
   I used gate 1, source 2, drain 3), B5819W cathode pad, tantalum positive pad, FH12 pin 1, JST pin 1,
   and whether JLCPCB can paste and reflow the pads under the XIAO.
-- Stock was read on 2026-11-27 (`out/stock-check.md`); rerun `tools/stock_report.py` before ordering.
+- Stock was read on 2026-11-28 (`out/stock-check.md`); rerun `tools/stock_report.py` before ordering.
 
 ## Answers to the handoff's open items
 
-- Sense stock and assembly type: item 1 above.
+- Sense stock and assembly type: in stock (123), Standard Only; the owner chose Standard assembly.
 - XIAO 5V pin and battery pads: the 5V pin is the USB VBUS net, wired straight to the connector and the
   charger input; the BAT pad is the charger output with 2.2 uF on it. Same in Seeed's v1.1 and v1.2
   schematics. On battery the 5V pin is pulled to ground by 100k.
-- Electrode series resistor: still open.
-- Supply sequencing: item 2 above.
+- Electrode series resistor: 47k.
+- Supply sequencing: still open, see above.

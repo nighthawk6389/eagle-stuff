@@ -1,10 +1,10 @@
 # EMG wristband: main pod, rev A
 
-KiCad project for the main pod: two ADS1298 converters, a Seeed XIAO nRF52840, a 3.0 V analog rail
+KiCad project for the main pod: two ADS1298 converters, a Seeed XIAO nRF52840 Sense, a 3.0 V analog rail
 with a USB interlock, and a vibration-motor driver. The brief is in `CLAUDE.md`. What is still
 uncertain is in `OPEN.md`; read that before trusting anything here.
 
-Status (2026-11-27): schematic drawn, ERC clean, not laid out.
+Status (2026-11-28): schematic drawn, ERC clean, not laid out.
 
 ## Where things are
 
@@ -49,7 +49,9 @@ recognisable when the pod is split later.
 
 ## Choices made while drawing (details in OPEN.md)
 
-- **Plain XIAO, no IMU, no microphone.** JLCPCB marks the Sense version and every IMU "Standard Only".
+- **XIAO Sense on Standard assembly** (owner's decision). JLCPCB marks the Sense "Standard Only"; every
+  other part is cleared for Economic. Standard assembly wants boards of 70 x 70 mm or rails added.
+- **47k in every skin-facing line**, so any path through the wearer crosses 94k.
 - **Digital supply always on, analog supply gated.** The interlock only switches the 3.0 V rail.
 - **Interlock:** a MOSFET holds the regulator's enable low whenever the XIAO's 5V pin (USB VBUS) is up.
 - **SPI clock and data-in on D5 and D4**, the only XIAO pins Nordic rates for fast signals.

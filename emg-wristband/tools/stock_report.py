@@ -2,7 +2,8 @@
 """Check every BOM line against JLCPCB's public part pages and write out/stock-check.md.
 
 Usage: python3 tools/stock_report.py [boards]      (boards defaults to 2, JLCPCB's assembly minimum)
-Exits non-zero if a part is marked "Standard Only", is out of stock, or the page shows a different part.
+Exits non-zero if a part is out of stock or the page shows a different part. Parts marked
+"Standard Only" are allowed (the order uses Standard assembly) and are listed at the end.
 """
 import csv
 import datetime
@@ -26,6 +27,7 @@ def main():
              "| LCSC | Part (JLCPCB page) | Package | Used as | Per board | Stock | Library | Assembly type | Unit USD | OK |",
              "|---|---|---|---|---|---|---|---|---|---|"]
     bad = 0
+    standard = []
     for row in rows:
         code = row["LCSC Part #"]
         r = jlc_check.parse(code, jlc_check.fetch(code))
@@ -34,7 +36,9 @@ def main():
         stock = r.get("stock") or 0
         mpn_ok = (r.get("mpn") or "").replace(" ", "").upper().startswith(row["Manufacturer Part"].split()[-1].replace(" ", "").upper()[:8]) \
             or row["Manufacturer Part"].replace(" ", "").upper().startswith((r.get("mpn") or "?").replace(" ", "").upper()[:8])
-        ok = stock >= need and r.get("pcba_type") == "Economic and Standard" and mpn_ok
+        ok = stock >= need and r.get("pcba_type") in ("Economic and Standard", "Standard Only") and mpn_ok
+        if r.get("pcba_type") == "Standard Only":
+            standard.append(f"{code} ({row['Comment']})")
         bad += not ok
         lib = {"base": "Basic", "expand": "Extended"}.get(r.get("lib"), str(r.get("lib")))
         lines.append(f"| {code} | {r.get('mpn')} ({r.get('brand')}) | {r.get('package')} | {row['Comment']} | "
@@ -42,6 +46,7 @@ def main():
                      f"{'yes' if ok else 'NO'} |")
     ext = sum(1 for l in lines[6:] if "| Extended |" in l)
     lines += ["", f"{len(rows)} BOM lines, {ext} of them extended parts (JLCPCB charges a fee per extended part type).",
+              "Parts that force Standard assembly: " + (", ".join(standard) or "none") + ".",
               "Not on the BOM: the test points and the motor pads (bare copper), and the motor itself."]
     open(os.path.join(ROOT, "out", "stock-check.md"), "w").write("\n".join(lines) + "\n")
     print("\n".join(lines))

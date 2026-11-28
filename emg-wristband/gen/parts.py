@@ -107,7 +107,9 @@ FP_C0402 = "Capacitor_SMD:C_0402_1005Metric"
 FP_C0603 = "Capacitor_SMD:C_0603_1608Metric"
 CAT = {
     "ADS1298": ("ADS1298IPAGR", "Package_QFP:TQFP-64_10x10mm_P0.5mm", "C527440", "ADS1298IPAGR"),
-    "XIAO": ("XIAO nRF52840", "emgpod:XIAO-nRF52840-SMD", "C17209540", "Seeed 102010448"),
+    # Sense version (IMU and PDM microphone on board). "Standard Only" at JLCPCB: the owner chose
+    # Standard assembly on 2026-11-28. The plain XIAO, C17209540, fits the same footprint.
+    "XIAO": ("XIAO nRF52840 Sense", "emgpod:XIAO-nRF52840-SMD", "C17401557", "Seeed 102010469"),
     "LDO": ("LP5907MFX-3.0", "Package_TO_SOT_SMD:SOT-23-5", "C475492", "LP5907MFX-3.0/NOPB"),
     "ESD": ("TPD4E001DRL", "Package_TO_SOT_SMD:SOT-563", "C527516", "TPD4E001DRLR"),
     "NFET": ("AO3400A", "Package_TO_SOT_SMD:SOT-23", "C20917", "AO3400A"),
@@ -120,7 +122,8 @@ CAT = {
     "R0": ("0R", FP_R0402, "C17168", "0402WGF0000TCE"),
     "R33": ("33R", FP_R0402, "C25105", "0402WGF330JTCE"),
     "R10K": ("10k", FP_R0402, "C25744", "0402WGF1002TCE"),
-    "R22K": ("22k", FP_R0402, "C25768", "0402WGF2202TCE"),
+    # series resistor in every skin-facing line (16 sense lines per converter and the bias line)
+    "RSKIN": ("47k", FP_R0402, "C25792", "0402WGF4702TCE"),
     "R100K": ("100k", FP_R0402, "C25741", "0402WGF1003TCE"),
     "R1M": ("1M", FP_R0402, "C26083", "0402WGF1004TCE"),
     "R12_0805": ("12R", "Resistor_SMD:R_0805_2012Metric", "C17445", "0805W8F120JT5E"),

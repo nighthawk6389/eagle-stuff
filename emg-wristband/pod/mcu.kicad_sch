@@ -513,13 +513,13 @@
 		(stroke (width 0) (type default))
 		(uuid "4ef6a26f-3ae9-5a1b-9fae-6113f6a1b46f")
 	)
-	(text "Seeed XIAO nRF52840, soldered down as a module"
+	(text "Seeed XIAO nRF52840 Sense, soldered down as a module"
 		(exclude_from_sim no)
 		(at 25.4 30 0)
 		(effects (font (size 1.8 1.8) (bold yes)) (justify left bottom))
 		(uuid "f35a73a8-cdb0-5e42-b4ed-361c097ec1ab")
 	)
-	(text "Provides the radio and antenna, USB-C, LiPo charger, 3.3 V regulator and USB bootloader.\nPads 15 to 22 are on the underside of the XIAO (Seeed bottom-pad drawing).\nThe plain XIAO and the Sense version share this footprint and pinout."
+	(text "Provides the radio and antenna, USB-C, LiPo charger, 3.3 V regulator and USB bootloader.\nPads 15 to 22 are on the underside of the XIAO (Seeed bottom-pad drawing).\nSense version: 6-axis IMU and PDM microphone are on the module, on its own internal pins."
 		(exclude_from_sim no)
 		(at 25.4 35.5 0)
 		(effects (font (size 1.1 1.1)) (justify left top))
@@ -535,7 +535,7 @@
 		(dnp no)
 		(uuid "ba609f30-29a0-5bd6-82ee-4b975c0130f4")
 		(property "Reference" "U1" (at 83.82 51.5 0) (effects (font (size 1.27 1.27)) (justify left)))
-		(property "Value" "XIAO nRF52840"
+		(property "Value" "XIAO nRF52840 Sense"
 			(at 101.6 51.5 0)
 			(effects (font (size 1.27 1.27)) (justify left))
 		)
@@ -545,8 +545,8 @@
 		)
 		(property "Datasheet" "" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(property "Description" "" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "LCSC" "C17209540" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "MPN" "Seeed 102010448" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "LCSC" "C17401557" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "MPN" "Seeed 102010469" (at 101.6 83.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
 		(pin "1" (uuid "f24889ad-593f-5551-85c5-493c8240c672"))
 		(pin "2" (uuid "368f90ed-f6f9-5aa2-9971-b7b492756615"))
 		(pin "3" (uuid "c41c7e13-26de-5549-998e-3ae9d6f60164"))

@@ -21,5 +21,5 @@ Not read from a datasheet yet (footprint details, needed at layout): Hirose FH12
 JST S2B-PH-SM4-TB pad numbering, KEMET T491B polarity mark, B5819W cathode mark. The PDFs are linked from
 the JLCPCB part pages listed in `out/stock-check.md`.
 
-Could not be opened from this environment: TI E2E thread 870302 on ADS1299 power sequencing (the site
-refused the request). See OPEN.md, item 2.
+TI E2E thread 870302 (ADS1299 power sequencing): read on 2026-11-28 from a copy of the page the owner
+saved. What it says, and what it does not, is in OPEN.md.
