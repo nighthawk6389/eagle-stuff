@@ -33,6 +33,7 @@ POWER_NETS = ["VBAT", "AVDD", "+3V3", "GND", "MOT_P", "MOT_N", "VBUS"]
 BX = {"A": 12.25, "B": 36.75}
 CONN_Y = None                   # set once the connector footprint has been measured
 CHIP_Y = 29.9
+SPLIT_Y = 27.6                  # layer 3: +3V3 above this line, AVDD below (DVDD pins are above it)
 ROW1, ROW2 = 39.75, 37.7         # resistor-array rows (centre lines)
 XIAO_X0, XIAO_Y0 = 28.0, 1.0
 BOTTOM = {"TP19", "TP20", "TP21", "TP22"}      # bare pads on the back; no parts are assembled there
@@ -345,7 +346,7 @@ def main():
                 track(knee, vp, "GND", width=FINE)
             via(vp, "GND")
 
-    # ---- planes: layer 2 is ground everywhere; layer 3 carries AVDD under the converters, ground elsewhere
+    # ---- planes: layer 2 is ground everywhere; layer 3 carries +3V3 (top) and AVDD (bottom)
     def zone(netname, layer, pts, prio=0, name=""):
         z = pcbnew.ZONE(board)
         z.SetLayer(layer)
@@ -366,7 +367,10 @@ def main():
     full = [(0, 0), (W, 0), (W, H), (0, H)]
     zone("GND", pcbnew.In1_Cu, full, 0, "ground plane")
     zone("GND", pcbnew.In2_Cu, full, 0, "ground fill")
-    zone("AVDD", pcbnew.In2_Cu, [(1.0, 22.5), (W - 1.0, 22.5), (W - 1.0, H - 1.0), (1.0, H - 1.0)], 1, "analog supply")
+    zone("+3V3", pcbnew.In2_Cu, [(1.0, 1.0), (W - 1.0, 1.0), (W - 1.0, SPLIT_Y - 0.2), (1.0, SPLIT_Y - 0.2)], 1,
+         "digital supply")
+    zone("AVDD", pcbnew.In2_Cu, [(1.0, SPLIT_Y + 0.2), (W - 1.0, SPLIT_Y + 0.2), (W - 1.0, H - 1.0), (1.0, H - 1.0)], 1,
+         "analog supply")
 
     # ---- antenna keep-out: no copper on any layer under and beside the XIAO's antenna end
     k = pcbnew.ZONE(board)

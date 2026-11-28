@@ -42,7 +42,15 @@ class Space:
     def __init__(self, brd, netname, width=0.2):
         self.brd, self.netname, self.net, self.width = brd, netname, brd.FindNet(netname), width
         self.via_no = {lay: self._others(lay, B.CLEAR + B.VIA_D / 2 + 0.02) for lay in (F, BK)}
-        self.track_no = {lay: self._others(lay, B.CLEAR + width / 2 + 0.02) for lay in (F, BK)}
+        self.track_no = {lay: self._others(lay, B.CLEAR + width / 2 + 0.04) for lay in (F, BK)}
+        self.own = {lay: pcbnew.SHAPE_POLY_SET() for lay in (F, BK)}     # this net's own pads
+        for fp in brd.GetFootprints():
+            for pad in fp.Pads():
+                for lay in (F, BK):
+                    if pad.GetNetname() == netname and pad.IsOnLayer(lay):
+                        pad.TransformShapeToPolygon(self.own[lay], lay, 0, FromMM(0.01), pcbnew.ERROR_INSIDE)
+        for lay in (F, BK):
+            self.own[lay].Simplify()
         self.pads_no = pcbnew.SHAPE_POLY_SET()           # no via on or touching any pad
         for fp in brd.GetFootprints():
             for pad in fp.Pads():
@@ -64,10 +72,14 @@ class Space:
             for pad in fp.Pads():
                 if pad.GetNetname() != self.netname and pad.IsOnLayer(layer):
                     pad.TransformShapeToPolygon(ps, layer, FromMM(margin), FromMM(0.01), pcbnew.ERROR_OUTSIDE)
+        keep = pcbnew.SHAPE_POLY_SET()
         for z in self.brd.Zones():
             if z.GetIsRuleArea():
                 for i in range(z.Outline().OutlineCount()):
-                    ps.AddOutline(z.Outline().Outline(i))
+                    keep.AddOutline(z.Outline().Outline(i))
+        if keep.OutlineCount():
+            keep.Inflate(FromMM(margin), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, FromMM(0.01))
+            ps.Append(keep)
         ps.Simplify()
         return ps
 
@@ -99,6 +111,8 @@ def maze(space, start, goal=None, margin=4.0, step=0.1, limit=600000):
     edge = 0.3 + space.width / 2
     x0, x1 = max(edge, min(xs) - margin), min(B.W - edge, max(xs) + margin)
     y0, y1 = max(edge, min(ys) - margin), min(B.H - edge, max(ys) + margin)
+    x0 = sx - int((sx - x0) / step) * step            # put the start point exactly on the grid, so a track
+    y0 = sy - int((sy - y0) / step) * step            # can leave a narrow pad along its centre line
     nx, ny = int((x1 - x0) / step), int((y1 - y0) / step)
 
     def cell(x, y):
@@ -122,7 +136,8 @@ def maze(space, start, goal=None, margin=4.0, step=0.1, limit=600000):
             return True
         k = (ix, iy, lay)
         if k not in ok_cache:
-            ok_cache[k] = not space.track_no[lay].Contains(B.V(*xy(ix, iy)))
+            pt = B.V(*xy(ix, iy))
+            ok_cache[k] = space.own[lay].Contains(pt) or not space.track_no[lay].Contains(pt)
         return ok_cache[k]
 
     def via_at(ix, iy):

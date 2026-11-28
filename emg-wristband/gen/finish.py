@@ -23,7 +23,7 @@ import lastmile as L  # noqa: E402
 
 RAW = sys.argv[1] if len(sys.argv) > 1 else os.path.join(B.ROOT, "out", "route", "routed.kicad_pcb")
 PCB = sys.argv[2] if len(sys.argv) > 2 else os.path.join(B.POD, "emg-pod.kicad_pcb")
-PLANES = ("GND", "AVDD")
+PLANES = ("GND", "AVDD", "+3V3")
 KEEP_REF = ("U100", "U200", "U1", "U2", "J1", "J2", "J100", "J200")
 
 
@@ -59,21 +59,23 @@ def unconnected(brd):
     return out, len(data.get("unconnected_items", [])), len(data.get("violations", []))
 
 
-def complete_signals(brd):
+def complete_signals(brd, skip=PLANES):
     """Route the connections the autorouter gave up on."""
     done = 0
     for _ in range(3):
-        todo = [u for u in unconnected(brd)[0] if u[0] not in PLANES]
+        todo = [u for u in unconnected(brd)[0] if u[0] not in skip]
         if not todo:
             break
         progress = 0
         for net, a, b in todo:
             space = L.Space(brd, net, B.TRACK)
+            short = math.hypot(a[0] - b[0], a[1] - b[1]) < 4.0
+            kw = dict(margin=3.0, step=0.05) if short else dict(margin=6.0)
             start = (a[0], a[1], a[2] if a[2] is not None else L.F)
-            res = L.maze(space, start, b, margin=6.0)
+            res = L.maze(space, start, b, **kw)
             if res is None and a[2] is None:
                 start = (a[0], a[1], L.BK)
-                res = L.maze(space, start, b, margin=6.0)
+                res = L.maze(space, start, b, **kw)
             if res:
                 L.lay_down(space, start, res, b)
                 progress += 1
@@ -103,7 +105,7 @@ def link_neighbours(brd, netname, reach=1.7):
 def to_plane(space, pad):
     """Give a pad a short track to a via that reaches its plane. True if it fitted."""
     x, y = mm(pad.GetPosition())
-    res = L.maze(space, (x, y, L.F), None, margin=3.5)
+    res = L.maze(space, (x, y, L.F), None, margin=6.0)
     if res is None:
         return False
     L.lay_down(space, (x, y, L.F), res)
@@ -256,15 +258,18 @@ def main():
     ground_pours(brd)
     filler = pcbnew.ZONE_FILLER(brd)
     filler.Fill(brd.Zones())
-    avdd = plane_vias(brd, "AVDD", (1.5, 23.0, B.W - 1.5, B.H - 1.5))
+    avdd = plane_vias(brd, "AVDD", (1.5, B.SPLIT_Y + 0.6, B.W - 1.5, B.H - 1.5))
+    avdd += plane_vias(brd, "+3V3", (1.5, 1.5, B.W - 1.5, B.SPLIT_Y - 0.6))
     filler.Fill(brd.Zones())
     gnd = stitch(brd)
+    filler.Fill(brd.Zones())
+    sig += complete_signals(brd, skip=())             # whatever is still open, plane nets included
     filler.Fill(brd.Zones())
     silkscreen(brd)
     pcbnew.SaveBoard(PCB, brd)
     left, total, viol = unconnected(brd)
     print(f"completed by the last-mile router: {sig} signal connections | ground links {links} | vias added: "
-          f"AVDD {avdd}, ground {gnd}")
+          f"supplies {avdd}, ground {gnd}")
     print(f"DRC: {viol} violations, {total} unconnected")
     for net, a, b in left:
         print(f"   still open: {net} ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})")
