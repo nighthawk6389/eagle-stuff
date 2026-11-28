@@ -6,7 +6,8 @@ uncertain is in `OPEN.md`; read that before trusting anything here.
 
 Status (2026-11-28): schematic drawn and ERC clean; board laid out and routed, 49 x 49 mm with a notch
 under the antenna, four layers; reviewed once and reworked; fabrication files written, for the single
-board and for the board in a 70 x 70 mm assembly frame. Nothing has been ordered or built. The layout's open points are under
+board and for the board in a 74 x 74 mm assembly frame; reviewed a second time, with findings still
+open (`OPEN.md`, "Second review"). Nothing has been ordered or built. The layout's open points are under
 "Layout" in `OPEN.md`.
 
 ## Where things are
@@ -18,7 +19,7 @@ board and for the board in a 70 x 70 mm assembly frame. Nothing has been ordered
 | `out/stock-check.md` | Stock and assembly type of every BOM line, with the date it was read |
 | `out/erc.rpt` | KiCad's ERC report |
 | `out/fab/` | The single board: Gerbers and drill files (also zipped), `cpl-jlcpcb.csv` (placement) and the BOM |
-| `out/fab-panel/` | The same board in its 70 x 70 mm assembly frame: **the files for a JLCPCB Standard-assembly order** |
+| `out/fab-panel/` | The same board in its 74 x 74 mm assembly frame: **the files for a JLCPCB Standard-assembly order** |
 | `out/drc.rpt`, `out/drc-panel.rpt` | KiCad's DRC reports for the routed board and for the frame |
 | `out/board-top.png`, `out/board-bottom.png`, `out/panel-top.png` | KiCad's rendering of the bare board, both sides, and of the frame |
 | `pod/` | The KiCad 9 project (`emg-pod.kicad_pro`, schematic and `emg-pod.kicad_pcb`) and the frame (`emg-pod-panel.kicad_pcb`). Opens in KiCad 9 or newer |
@@ -62,8 +63,9 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
   part sits, and the routes that must not be left to an autorouter. Those are the 32 electrode lines
   (connector, resistor array, converter pin, in one straight line on the top layer), their fan-out on
   the back to the filter capacitors and to the ESD arrays, the via to a plane for every supply and
-  ground pin of the converters, VCAP1, a ground via beside every ground pad, and the six nets that
-  cross from the XIAO to the left half below the notch (five signals and the battery). The outline, with its
+  ground pin of the converters, VCAP1, a ground via beside every ground pad, and lanes on the back for
+  the seven nets that cross from the XIAO to the left half below the notch (five signals, the battery
+  and VBUS; a lane the routers end up not using is removed again). The outline, with its
   notch under the XIAO's antenna, and the keep-outs under the module's bare pads are there too. It also names the
   areas reserved for the input lines (`quiet_zones`): the fan-out on the back around each converter
   and the stubs under it on the front. The routers lay nothing there.
@@ -78,8 +80,8 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
   how close vias come to pads, and writes the full DRC report. It exits non-zero unless DRC has no
   errors, nothing is unconnected, the reserved areas are clean and the planes have no gaps.
 
-- `gen/panel.py` copies the finished board into a 70 x 70 mm frame (JLCPCB's smallest size for
-  Standard assembly): a routed slot around the board, five tabs with a row of small holes each,
+- `gen/panel.py` copies the finished board into a 74 x 74 mm frame (JLCPCB's smallest size for
+  Standard assembly is 70 x 70): a routed slot around the board, five tabs with a row of small holes each,
   three fiducials and four tooling holes on the rails. It does not move the board or refill its
   zones, checks that all copper is the same as in the single board, and runs DRC on the result.
   Run it again whenever `pod/emg-pod.kicad_pcb` changes. How to order and what is unverified:
@@ -90,7 +92,7 @@ is the result of one run, and `out/fab/` and `out/fab-panel/` were made from exa
 
 Layers: 1 signal and parts, 2 ground (one plane, no splits), 3 supplies (DVDD above y = 26.0 mm, AVDD
 below, ground
-fill elsewhere), 4 signal. No parts on the back; the four SWD rescue pads are there, under the XIAO.
+fill elsewhere), 4 signal. No parts on the back; five bare pads are there, under the XIAO (SWD, ground and 3.3 V for a probe).
 
 ## Sheets
 
@@ -106,7 +108,7 @@ recognisable when the pod is split later.
 ## Choices made while drawing (details in OPEN.md)
 
 - **XIAO Sense on Standard assembly** (owner's decision). JLCPCB marks the Sense "Standard Only"; every
-  other part is cleared for Economic. Standard assembly wants boards of 70 x 70 mm or rails added.
+  other part is cleared for Economic. Standard assembly wants boards of at least 70 x 70 mm with rails and fiducials, hence the frame.
 - **47k in every skin-facing line**, so any path through the wearer crosses 94k.
 - **Digital supply always on, analog supply gated.** The interlock only switches the 3.0 V rail.
 - **Interlock:** a MOSFET holds the regulator's enable low whenever the XIAO's 5V pin (USB VBUS) is up.

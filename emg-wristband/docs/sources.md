@@ -70,8 +70,8 @@ boards. The right-hand column is what `gen/panel.py` draws.
 
 | On JLCPCB's pages | The frame |
 |---|---|
-| Standard assembly: 70 x 70 mm minimum; edge rails and fiducials "Necessary" | 70 x 70 mm, rails on all four sides |
-| Edge rails at least 5 mm | 8 mm and 8.5 mm |
+| Standard assembly: 70 x 70 mm minimum; edge rails and fiducials "Necessary" | 74 x 74 mm, rails on all four sides |
+| Edge rails at least 5 mm | 10 mm and 10.5 mm |
 | Fiducials: 1 mm copper, 2 mm mask opening, three or four, centred 3.85 mm from the panel edges | Three, as described, not symmetric |
 | Tooling holes for assembly: 2 mm | Four, unplated, centred 3.85 mm from the edges |
 | Board spacing in a panel 1.6 or 2 mm | Slot 2 mm (3 mm on the USB side) |
@@ -99,6 +99,10 @@ part page (`out/stock-check.md`).
   ANT1 (AN3216, 3.2 x 1.6 mm) centred at (29.07, 8.09); NFC pads 2.0 x 1.0 mm at (29.26, 13.70) and
   (29.26, 15.61); USB shell legs, plated slots of about 1.8 x 0.9 mm, at (47.86, 5.59), (47.86, 14.19),
   (43.66, 5.59) and (43.66, 14.19). The notch and the keep-outs in `gen/board.py` come from these.
+  **Not yet in the keep-outs** (found by the second review, confirmed in the same file): two milled
+  slots of 1.27 x 0.51 mm in the module's board at (33.07 to 34.34, 3.41 to 3.92) and (33.07 to
+  34.34, 15.86 to 16.37), taken to be for the shield can's tabs, and the USB socket's two unplated
+  0.6 mm peg holes at (44.21, 7.00) and (44.21, 12.78). The socket's drawing reaches x = 50.46.
 - `TestPoint_Pad_D1.0mm_bare` in the project library is KiCad's `TestPoint_Pad_D1.0mm` without its
   silkscreen ring, so the net labels fit between the pads.
 - Freerouting 2.1.0 (github.com/freerouting/freerouting) did the autorouted part of the board.

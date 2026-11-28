@@ -1,8 +1,9 @@
 # Open items: main pod rev A
 
 State on 2026-11-28, after the schematic, the owner's decisions, the first layout, an independent
-review, the rework that followed it, three small additions and the assembly frame. Nothing has been
-ordered or built. "Checked" means read from the document named in `docs/sources.md`; anything else is
+review, the rework that followed it, three small additions, the assembly frame and a second review
+of all that. Nothing has been ordered or built. **Read "Second review" below before ordering: one of
+its findings should be fixed first.** "Checked" means read from the document named in `docs/sources.md`; anything else is
 flagged. The layout's own open points are in "Layout" below.
 
 ## Decided by the owner on 2026-11-28
@@ -22,7 +23,7 @@ flagged. The layout's own open points are in "Layout" below.
    pins. Details under "Independent review" below.
 6. **Three additions and the assembly frame** (asked for after the rework). A 3.3 V pad on the back
    beside the SWD pads, a ground post for a scope clip, a 1206 motor resistor, and the pod drawn
-   inside a 70 x 70 mm frame for Standard assembly (next section).
+   inside a 74 x 74 mm frame for Standard assembly (next section).
 
 ### What Standard assembly changes for the order
 
@@ -33,8 +34,9 @@ single boards from 70 x 70 mm to 460 x 500 mm, and lists edge rails and fiducial
 The pod is 49 x 49 mm, so it is ordered inside a frame: `pod/emg-pod-panel.kicad_pcb`, written by
 `gen/panel.py`, with its own files in `out/fab-panel/` and a picture in `out/panel-top.png`.
 
-- 70 x 70 mm outside. The pod sits in the middle with a routed slot around it, 2 mm wide (3 mm on the
-  right, where the XIAO's USB socket overhangs). Rails 8 mm left and right, 8.5 mm top and bottom.
+- 74 x 74 mm outside (the minimum is 70; the second review pointed out that exactly 70 leaves nothing
+  to spare). The pod sits in the middle with a routed slot around it, 2 mm wide (3 mm on the right,
+  where the XIAO's USB socket overhangs). Rails 10 mm left and right, 10.5 mm top and bottom.
 - Five tabs, 5 mm wide, hold the pod: top edge x 15.5 to 20.5, right edge y 19 to 24, bottom edge
   x 22 to 27 (between the strip connectors), left edge y 9 to 14 and y 17.5 to 22.5. Each has a row of
   six 0.5 mm holes, 0.8 mm apart, lying just outside the pod's edge, so the pod's outline and its
@@ -45,14 +47,14 @@ The pod is 49 x 49 mm, so it is ordered inside a frame: `pod/emg-pod-panel.kicad
   fill with the single board (identical), and the placement file is byte-for-byte the single
   board's. DRC on the frame: 0 errors, 0 warnings (`out/drc-panel.rpt`).
 
-To order: upload `out/fab-panel/emg-pod-panel-gerbers.zip` (70 x 70 mm, 4 layers), with
+To order: upload `out/fab-panel/emg-pod-panel-gerbers.zip` (74 x 74 mm, 4 layers), with
 `bom-jlcpcb.csv` and `cpl-jlcpcb.csv` from the same folder, and do not ask JLCPCB to add rails.
 `out/fab/` still holds the single board, for a bare-board order or another assembler.
 
 After delivery: **cut each tab** along its row of holes with flush cutters and file what is left.
 Do not snap them. 0402 ceramic capacitors stand 1.35 mm from the left and right edges from y = 26
-down (the nearest tab ends 2.7 mm from one), and the tantalum C230 is 1.65 mm from the right edge
-beside the tab there. Until filed, the remains of a tab stand up to 0.5 mm proud of a 49 mm board
+down (the nearest tab ends 2.7 mm from one), the tantalum C230 is 1.65 mm from the right edge
+beside the tab there, and at the bottom tab a via of an electrode line is 0.59 mm from the edge. Until filed, the remains of a tab stand up to 0.5 mm proud of a 49 mm board
 whose limit is 50 mm.
 
 Not verified:
@@ -67,6 +69,9 @@ Not verified:
   Customer", 1 column by 1 row, and say in the order remark that the frame is the assembly rail.
 - **Where the order number is printed.** I could not read JLCPCB's page on it. Pick the option on the
   order form that puts it on the frame or leaves it off.
+- **No USB plug while the pod is in the frame.** The rail starts 1.5 mm beyond the socket's mouth and
+  a plug's body would hit it (second review, by estimate: the XIAO's height is not published). Cut
+  the pod out before the first power-up over USB.
 - **Routing of the slots.** The slot corners are drawn square; the cutter leaves them rounded, so a
   sliver of laminate joins each tab's flanks to the pod beside the outermost holes. Flush cutters
   deal with it.
@@ -129,7 +134,7 @@ Bring-up check either way: measure DVDD current with AVDD off.
 | R124, C140 (bias feedback) | 1 Mohm, 1.5 nF | Datasheet "typical values for example only". Loop stability with real electrodes is untested |
 | R20, R121, R221, R123 (series, SCLK / DOUT / CLK) | 33 ohm | My choice; the datasheet says "termination resistors as needed". Can be fitted as 0 ohm |
 | R120, R220 (chip-select pull-ups), R22, R23 (START and SCLK pull-downs) | 100k | My choice. They only have to define the lines while the MCU pins float |
-| R1, R2 (enable divider, also the converters' PWDN) | 1k, 10k | Calculated on the power sheet from SBAS459K's digital input limits: high is 0.91 x DVDD against 0.8 needed; low holds at 0.2 V against the 10 uA each of the two PWDN inputs. The reviewer suggested 1 Mohm for R2; that would not hold the node low against that input current, so I chose these instead. Cost: 0.3 mA while the analog rail is on |
+| R1, R2 (enable divider, also the converters' PWDN) | 1k, 10k | Calculated on the power sheet from SBAS459K's digital input limits: high is 0.91 x DVDD against 0.8 needed **if the MCU pin delivers the full 3.3 V; it does not quite, see F2 under "Second review"**; low holds at 0.2 V against the 10 uA each of the two PWDN inputs. The reviewer suggested 1 Mohm for R2; that would not hold the node low against that input current, so I chose these instead. Cost: 0.3 mA while the analog rail is on |
 | R3, R4, C3 (interlock) | 10k, 10k, 100 nF | Calculated on the power sheet from the AO3400A datasheet |
 | R21 (link in the converters' digital supply) | 0 ohm | So the DVDD current can be measured |
 | R223 (clock pull-down on converter B) | 100k | My choice, so the input is not floating before firmware enables converter A's clock output |
@@ -180,7 +185,9 @@ Bring-up check either way: measure DVDD current with AVDD off.
 - Leave GPIO1-4 of both converters as inputs (reset default); they are shorted to ground.
 - Keep converter B's bias amplifier powered down; select the internal reference and enable the bias
   amplifier on converter A only.
-- Refuse to stream while USB is detected (second layer behind the interlock).
+- Refuse to stream while USB is detected (second layer behind the interlock), and take AFE_EN low:
+  with USB attached and AFE_EN high the pin pushes 3.3 mA through R1 into the interlock transistor.
+- Configure D8 (AFE_EN) as a high-drive output, so the converters' PWDN level has margin (F2 below).
 - Drive P0.13 low for the 100 mA charge current.
 - With AFE_EN low the converters are in power-down; do not clock SPI at them in that state.
 
@@ -248,6 +255,67 @@ Added afterwards, at the owner's request:
 
 Still not done: reference designators on the silkscreen for the ESD arrays and passives.
 
+## Second review, 2026-11-28: the rework, the additions and the frame
+
+A third session, again with only the files, reviewed what changed since the first review. It found no
+blocker, re-ran ERC and DRC (clean), and confirmed the counts, the pin tables it checked, the plane
+geometry and the frame's numbers against JLCPCB's capabilities page. I re-measured F1, F3 and the
+figures in F2 and F7 myself; F4, F5 and F6 are the reviewer's measurements, not repeated by me.
+**None of F1 to F6 has been acted on: they change the circuit or need a new routing run, and that is
+the owner's call.** My recommendation is at the end of each.
+
+- **F1. A clock track runs under a slot in the XIAO's board. Fix before ordering.** Seeed's v1.2
+  board file has two milled slots, 1.27 x 0.51 mm, at (33.07 to 34.34, 3.41 to 3.92) and (33.07 to
+  34.34, 15.86 to 16.37) in this board's coordinates, where the shield can's solder line is
+  interrupted: almost certainly the slots its locating tabs sit in. I missed them when I listed the
+  bare metal under the module (I only looked for pads). The fixed SCLK_MCU track from pad 6 runs
+  straight down at x = 33.42 and passes under the first slot; if a tab reaches the underside, only
+  solder mask is between the grounded shield and the SPI clock. The USB socket's two 0.6 mm peg
+  holes at (44.21, 7.00) and (44.21, 12.78) have a CS_B track and a ground via under them (plastic
+  pegs, presumably, so less serious). *Recommended: add all four to the keep-outs and take the track
+  out of pad 6 sideways; needs a routing run.*
+- **F2. PWDN's high level has less margin than I wrote.** The table above says 0.91 x DVDD. That
+  assumed the MCU pin delivers DVDD exactly. Nordic's product specification guarantees a standard-
+  drive output only VDD - 0.4 V at 0.5 mA (and at least 1 mA at that drop). The divider takes 0.3 mA,
+  so on a resistive output the drop is at most 0.12 V and PWDN sees about 0.87 x DVDD, against 0.8
+  needed; read literally (0.4 V drop) there is no margin at all. The enable net is also 41 mm long
+  with no capacitor. *Recommended: set D8 to high drive in firmware (added to the firmware list
+  above; costs nothing), and add 100 nF from AVDD_EN to ground with the next routing run.*
+- **F3. RESET and MOSI still float while the MCU's pins are high-impedance.** The rework gave the
+  chip selects, START and SCLK pull resistors but not these two. SBAS459K 11.1 wants all digital
+  inputs low before power-up, and floating inputs may add to the DVDD current the R21 measurement
+  is meant to show. *Recommended: two more 100k pull-downs.*
+- **F4. The ground pads taken out of the pours now have long returns.** All 85 reach a via through
+  0.2 mm track only: 2 mm or more for 46 of them, up to 4.55 mm for eight of the 47 pF input
+  capacitors and for the reference capacitors C128 and C228. About 4 nH in series makes a 47 pF
+  capacitor useless above roughly 350 MHz, which makes the accepted point R5 (2.4 GHz pickup)
+  worse. *Recommended: join those pads to the pour through thermal-relief spokes instead of
+  isolating them, which keeps most of the tombstoning benefit; needs a routing run.*
+- **F5. The analog rail reaches its plane through 23.7 mm of 0.25 mm track and five vias**, passing
+  under converter A (about 50 milliohm and 20 nH; harmless at 7 mA DC, poor for a low-noise rail).
+  *Recommended: a fixed 0.5 mm route with two vias straight down from the regulator.*
+- **F6. Antenna.** The module's own copper-free window lies wholly over the notch. Pod copper is
+  3.57 mm in front of the antenna, 2.96 mm below it and 2.43 mm to its right (behind the module's
+  own ground). The antenna maker asks for 3 mm and for a place "at the edge of the PCB"; this one
+  sits 6.4 mm deep in a 7 mm slot with pod ground along its open side. Nothing to change on paper;
+  it stays a measurement for the first board, as before.
+- **F7. Frame.** Done: the frame is 74 x 74 mm (was exactly the 70 mm minimum) and its text is now
+  9.9 mm from the nearest fiducial (was 0.11 mm outside one's mask opening); `gen/panel.py` checks
+  that. Recorded above: no USB plug in the frame, the via 0.59 mm from the bottom tab's edge, and
+  the 50.5 mm width with the USB socket.
+- **Notes.** The scope ground post TP6 is tied solidly to four copper layers and will be slow to
+  solder (thermal relief would help). TP23 (3.3 V) is a bare pad 3.7 mm from the bare ground pad
+  TP22 on the face a cell would rest on: insulate. The notch's two corners at the top edge are
+  sharp.
+
+The reviewer also found seven statements in these documents that were wrong or stale (the number of
+nets on the back under the notch, one track length, the PWDN margin, the footprint's name, the count
+of back pads, the list of bare metal under the XIAO, and the 50 mm claim). All are corrected.
+
+It could not check: whether the shield tabs, USB legs or pegs actually protrude under a real XIAO,
+or the module's height (nothing published, no module); how the ADS1298's digital pins behave in
+power-down (the datasheet is silent); radio range; JLCPCB's acceptance of the frame.
+
 Mechanical, from datasheets (reviewer only unless stated). Nothing here is decided:
 
 - Tallest part is the battery connector J1, 5.5 mm (JST). The XIAO's height is not published.
@@ -277,12 +345,16 @@ ground.
 
 With the notch, everything between the XIAO and the left half passes a corridor 13 mm high below it.
 To keep that routable, the enable divider (R1, R2) sits beside the XIAO's AFE_EN pad, the test points
-for 3V3, CS_B and DRDY_B are on the right where those nets live, and the six nets from the XIAO's top
-row and battery pad that must reach the left half, plus VBUS, cross on the back in fixed lanes.
+for 3V3, CS_B and DRDY_B are on the right where those nets live, and the nets from the XIAO's top
+row and battery pad that must reach the left half, plus VBUS, have fixed lanes on the back. Six of
+the seven lanes are used in this run (CS_A, DRDY_A, START, MISO, VBAT, VBUS); the router took the
+seventh net, SCLK_MCU, along the front instead, and its unused lane was removed.
 
 ### Where the layout departs from the handoff
 
-- **Size: 49 x 49 mm**, not "about 40 x 45". It is inside the 50 x 50 limit with 1 mm to spare. Each
+- **Size: 49 x 49 mm**, not "about 40 x 45". The laminate is inside the 50 x 50 limit with 1 mm to
+  spare, but the XIAO's USB socket overhangs the right edge and reaches x = 50.5 mm by Seeed's board
+  file, so the assembled pod is 50.5 mm wide. Each
   converter block is 24.5 mm wide: the chip, a column of bypass capacitors and a column of eight
   filter capacitors on each side of it, all on the top. It gets smaller only with parts on the back
   or 0201 capacitors, and both were ruled out.
@@ -314,14 +386,15 @@ row and battery pad that must reach the left half, plus VBUS, cross on the back 
   tented (or plugged), and look under a connector on the first board.
 - **JST battery connector footprint**, tantalum and diode pad 1: as before, not checked against the
   makers' drawings (`docs/sources.md`).
-- **The XIAO's two NFC pads have no lands** (footprint `XIAO-nRF52840-SMD-noNFC`). They are unused; the
+- **The XIAO's two NFC pads have no lands** (footprint `XIAO-nRF52840-SMD-pod`, which also drops the
+  D6 land). They are unused; the
   module's pads rest on solder mask there. Whether JLCPCB can paste and reflow the pads under the
   module at all is still not confirmed.
 - **Same-net track spacing.** JLCPCB's page lists 0.25 mm; nothing here checks it.
 - **Thermal and current checks: none done.** Tracks on VBAT, the motor nets and VBUS are 0.25 mm;
   the largest load on them is the motor, 70 mA (120 mA at start).
-- **No signal-integrity or noise analysis.** The digital lines are long: SCLK is 31 mm from the XIAO
-  to its series resistor R20 and 47 mm of track from there to the two converters, MISO is 63 mm, the
+- **No signal-integrity or noise analysis.** The digital lines are long: SCLK is 26.5 mm from the XIAO
+  to its series resistor R20 and 55 mm of track from there to the two converters, MISO is 62 mm, the
   converter clock from A to B 44 mm. Each has a 33 ohm series resistor at its source. Nothing was
   simulated.
 - **Digital signals near the inputs.** The routers were kept out of the areas around the input lines

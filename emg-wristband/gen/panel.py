@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-"""The assembly frame: the finished pod board held in a 70 x 70 mm frame by break-off tabs.
+"""The assembly frame: the finished pod board held in a 74 x 74 mm frame by break-off tabs.
 
     /usr/bin/python3 gen/panel.py
 
 JLCPCB's Standard assembly takes nothing smaller than 70 x 70 mm and wants rails and fiducials
-(docs/sources.md). Reads pod/emg-pod.kicad_pcb and writes pod/emg-pod-panel.kicad_pcb, the files for
+(docs/sources.md); the frame is 4 mm larger than that so the limit is not met with nothing to spare. Reads pod/emg-pod.kicad_pcb and writes pod/emg-pod-panel.kicad_pcb, the files for
 ordering in out/fab-panel/, a DRC report and a picture. The board is not moved, its copper is not touched
 and its zones are not refilled, so what was checked on the single board is what is in the frame, and the
 placement file has the same coordinates.
@@ -13,6 +13,7 @@ The board's outline stays as drawn except where a tab joins it; there the edge l
 of small holes just outside the edge lets the tab be cut off.
 """
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -30,7 +31,7 @@ SRC = os.path.join(B.POD, "emg-pod.kicad_pcb")
 PANEL = os.path.join(B.POD, "emg-pod-panel.kicad_pcb")
 OUT = os.path.join(B.ROOT, "out", "fab-panel")
 
-SIZE = 70.0                      # outer size of the frame
+SIZE = 74.0                      # outer size of the frame: JLCPCB's minimum for Standard assembly is 70
 GAP = 2.0                        # routed slot between board and frame
 GAP_USB = 3.0                    # wider on the right, where the XIAO's USB socket overhangs the board
 TAB = 5.0                        # width of a tab
@@ -39,6 +40,7 @@ BITE, WEB, END = 0.5, 0.3, 0.25  # perforation diameter, web between two holes, 
 # right edges below y = 26, from the XIAO, and from the strip connectors' mouths on the bottom edge.
 TABS = [("top", 15.5, 20.5), ("right", 19.0, 24.0), ("bottom", 22.0, 27.0), ("left", 17.5, 22.5), ("left", 9.0, 14.0)]
 FID = 3.85                       # centres of fiducials and tooling holes from the panel edges
+TEXT_CLEAR = 3.0                 # the frame's text stays this far from the centre of every fiducial and tooling hole
 EDGE_BACK = 0.3                  # copper stays this far inside the board edge (board.py's edge clearance)
 EDGE_W = 0.15                    # line width JLCPCB's ordering notes suggest for outline, slots and cut-outs
 
@@ -192,10 +194,11 @@ def main():
         brd.Add(z)
 
     # ---- tooling holes in the corners; three fiducials, not symmetric, so the panel has only one way up
-    for i, (x, y) in enumerate([(PX0 + FID, PY0 + FID), (PX1 - FID, PY0 + FID), (PX0 + FID, PY1 - FID),
-                                (PX1 - FID, PY1 - FID)]):
+    marks = [(PX0 + FID, PY0 + FID), (PX1 - FID, PY0 + FID), (PX0 + FID, PY1 - FID), (PX1 - FID, PY1 - FID)]
+    for i, (x, y) in enumerate(marks):
         hole(x, y, 2.0, f"H{i + 1}")
-    for i, (x, y) in enumerate([(PX0 + 12.0, PY0 + FID), (PX1 - 12.0, PY0 + FID), (PX0 + 12.0, PY1 - FID)]):
+    fids = [(PX0 + 12.0, PY0 + FID), (PX1 - 12.0, PY0 + FID), (PX0 + 12.0, PY1 - FID)]
+    for i, (x, y) in enumerate(fids):
         fp = B.load("Fiducial:Fiducial_1mm_Mask2mm")
         fp.SetReference(f"FID{i + 1}")
         fp.SetPosition(B.V(x, y))
@@ -204,13 +207,19 @@ def main():
         fp.SetAttributes(fp.GetAttributes() | pcbnew.FP_EXCLUDE_FROM_BOM | pcbnew.FP_EXCLUDE_FROM_POS_FILES)
         brd.Add(fp)
 
+    # ---- a line of text in the middle of the bottom rail, clear of the fiducial and the tooling holes there
     t = pcbnew.PCB_TEXT(brd)
-    t.SetText("EMG POD rev A   assembly frame   cut the tabs, do not snap them")
-    t.SetPosition(B.V((PX0 + PX1) / 2, PY1 - 2.2))
+    t.SetText("EMG POD rev A   cut the tabs, do not snap them")
+    t.SetPosition(B.V((fids[2][0] + marks[3][0]) / 2, (FY1 + PY1) / 2))
     t.SetLayer(pcbnew.F_SilkS)
     t.SetTextSize(pcbnew.VECTOR2I(FromMM(1.0), FromMM(1.0)))
     t.SetTextThickness(FromMM(0.15))
     brd.Add(t)
+    bb = t.GetBoundingBox()
+    tx0, ty0, tx1, ty1 = [ToMM(v) for v in (bb.GetLeft() - B.V(0, 0).x, bb.GetTop() - B.V(0, 0).y,
+                                            bb.GetRight() - B.V(0, 0).x, bb.GetBottom() - B.V(0, 0).y)]
+    text_gap = min(math.hypot(max(tx0 - x, 0, x - tx1), max(ty0 - y, 0, y - ty1)) for x, y in marks + fids)
+    assert text_gap >= TEXT_CLEAR, f"text {text_gap:.2f} mm from a fiducial or tooling hole"
     pcbnew.SaveBoard(PANEL, brd)
 
     # ---- files for the order, checks, picture
@@ -229,6 +238,7 @@ def main():
     subprocess.run(["kicad-cli", "pcb", "render", "--side", "top", "--width", "1800", "--height", "1800",
                     "-o", os.path.join(B.ROOT, "out", "panel-top.png"), PANEL], capture_output=True)
     bb = brd.GetBoardEdgesBoundingBox()
+    print(f"text on the rail: {text_gap:.1f} mm from the nearest fiducial or tooling-hole centre")
     print(f"frame {ToMM(bb.GetWidth()) - EDGE_W:.2f} x {ToMM(bb.GetHeight()) - EDGE_W:.2f} mm; rails left {FX0 - PX0:g}, "
           f"right {PX1 - FX1:g}, top {FY0 - PY0:g}, bottom {PY1 - FY1:g} mm; slot {GAP:g} mm ({GAP_USB:g} on the right)")
     print(f"{len(TABS)} tabs of {TAB:g} mm with {per_tab} holes of {BITE:g} mm each ({n} holes), 4 tooling holes, 3 fiducials")
