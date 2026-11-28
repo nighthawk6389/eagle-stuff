@@ -1,12 +1,13 @@
 # Open items: main pod rev A
 
 State on 2026-11-28, after the schematic, the owner's decisions, the first layout, an independent
-review and the rework that followed it. Nothing has been ordered or built. "Checked" means read from the document named in `docs/sources.md`; anything else is
+review, the rework that followed it, three small additions and the assembly frame. Nothing has been
+ordered or built. "Checked" means read from the document named in `docs/sources.md`; anything else is
 flagged. The layout's own open points are in "Layout" below.
 
 ## Decided by the owner on 2026-11-28
 
-1. **Sense XIAO on Standard assembly.** The XIAO is now the Sense version, JLCPCB C17401557 (123 in
+1. **Sense XIAO on Standard assembly.** The XIAO is now the Sense version, JLCPCB C17401557 (120 in
    stock, "Standard Only"), so the whole order is Standard assembly. This overrides the handoff's
    "no Standard Only parts" rule for this one part. IMU and microphone are on the module. Every other
    BOM line is still cleared for Economic.
@@ -19,6 +20,9 @@ flagged. The layout's own open points are in "Layout" below.
    under the antenna (which costs the second DRDY pin), and the layout faults. Accepted as they are,
    to test on the first board: the ESD arrays on stubs and the filter capacitors' distance from the
    pins. Details under "Independent review" below.
+6. **Three additions and the assembly frame** (asked for after the rework). A 3.3 V pad on the back
+   beside the SWD pads, a ground post for a scope clip, a 1206 motor resistor, and the pod drawn
+   inside a 70 x 70 mm frame for Standard assembly (next section).
 
 ### What Standard assembly changes for the order
 
@@ -26,11 +30,46 @@ Read on 2026-11-28 from jlcpcb.com/capabilities/pcb-assembly-capabilities: Stand
 single boards from 70 x 70 mm to 460 x 500 mm, and lists edge rails and fiducials as "Necessary"
 (Economic: 10 x 10 mm upwards, rails and fiducials "Not necessary").
 
-The pod is 49 x 49 mm. A 5 mm rail on two sides makes it 59 x 49 mm, still under 70 in both
-directions, so rails alone are not enough: it needs a panel (2 x 2 boards is 98 x 98 mm before rails)
-or rails about 10.5 mm wide on all four sides. **Not settled.** The files in `out/fab/` are for the
-single board, with no rails, no fiducials and no panel. Choose at quote time whether JLCPCB builds the
-panel or a panel drawing is added here.
+The pod is 49 x 49 mm, so it is ordered inside a frame: `pod/emg-pod-panel.kicad_pcb`, written by
+`gen/panel.py`, with its own files in `out/fab-panel/` and a picture in `out/panel-top.png`.
+
+- 70 x 70 mm outside. The pod sits in the middle with a routed slot around it, 2 mm wide (3 mm on the
+  right, where the XIAO's USB socket overhangs). Rails 8 mm left and right, 8.5 mm top and bottom.
+- Five tabs, 5 mm wide, hold the pod: top edge x 15.5 to 20.5, right edge y 19 to 24, bottom edge
+  x 22 to 27 (between the strip connectors), left edge y 9 to 14 and y 17.5 to 22.5. Each has a row of
+  six 0.5 mm holes, 0.8 mm apart, lying just outside the pod's edge, so the pod's outline and its
+  0.3 mm copper setback are untouched.
+- Three 1 mm fiducials (2 mm mask opening) and four 2 mm tooling holes on the rails, all centred
+  3.85 mm from the frame's edges. No copper in the frame otherwise.
+- The script does not move the pod or refill its zones. It compares every track, via, pad and zone
+  fill with the single board (identical), and the placement file is byte-for-byte the single
+  board's. DRC on the frame: 0 errors, 0 warnings (`out/drc-panel.rpt`).
+
+To order: upload `out/fab-panel/emg-pod-panel-gerbers.zip` (70 x 70 mm, 4 layers), with
+`bom-jlcpcb.csv` and `cpl-jlcpcb.csv` from the same folder, and do not ask JLCPCB to add rails.
+`out/fab/` still holds the single board, for a bare-board order or another assembler.
+
+After delivery: **cut each tab** along its row of holes with flush cutters and file what is left.
+Do not snap them. 0402 ceramic capacitors stand 1.35 mm from the left and right edges from y = 26
+down (the nearest tab ends 2.7 mm from one), and the tantalum C230 is 1.65 mm from the right edge
+beside the tab there. Until filed, the remains of a tab stand up to 0.5 mm proud of a 49 mm board
+whose limit is 50 mm.
+
+Not verified:
+
+- **Nobody at JLCPCB has seen the frame.** Their rule pages describe panels of several boards (board
+  spacing 1.6 or 2 mm, tabs of 5 mm with perforations, holes 0.5 to 0.8 mm with 0.2 to 0.3 mm between
+  them, rails of 5 mm or more, the fiducial and tooling-hole sizes above). I applied those numbers to
+  a frame around one board. Their engineers check every assembly order and may ask for changes.
+- **Which "Delivery Format" to tick.** JLCPCB's ordering notes accept customer-made panels under
+  "Panel by Customer" (up to 10 designs) and say that under "Single PCB" a customer-panelised file
+  may hold up to 5 designs. I found no statement for one board in a frame. I would choose "Panel by
+  Customer", 1 column by 1 row, and say in the order remark that the frame is the assembly rail.
+- **Where the order number is printed.** I could not read JLCPCB's page on it. Pick the option on the
+  order form that puts it on the frame or leaves it off.
+- **Routing of the slots.** The slot corners are drawn square; the cutter leaves them rounded, so a
+  sliver of laminate joins each tab's flanks to the pod beside the outermost holes. Flush cutters
+  deal with it.
 
 ### Why 47k
 
@@ -94,7 +133,7 @@ Bring-up check either way: measure DVDD current with AVDD off.
 | R3, R4, C3 (interlock) | 10k, 10k, 100 nF | Calculated on the power sheet from the AO3400A datasheet |
 | R21 (link in the converters' digital supply) | 0 ohm | So the DVDD current can be measured |
 | R223 (clock pull-down on converter B) | 100k | My choice, so the input is not floating before firmware enables converter A's clock output |
-| R5 (motor) | 12 ohm 0805 | Calculated on the power sheet for the Leader LCM1027B3605F (3.0 V rated, 3.3 V maximum, 70 mA). Recalculate for any other motor |
+| R5 (motor) | 12 ohm, 1206, 0.25 W (C17913) | Calculated on the power sheet for the Leader LCM1027B3605F (3.0 V rated, 3.3 V maximum, 70 mA). 1206 because a stalled motor at 4.2 V puts about 0.15 W into it (power sheet). Recalculate for any other motor |
 
 ## Things I assumed and did not prove
 
@@ -178,7 +217,7 @@ Changed:
   the module's two NFC pads and its four USB shell legs (positions from Seeed's v1.2 board file).
   The NFC lands were not restored; DRC now rejects anything placed there.
 - **R9. Vias close to pads.** The ESD arrays' vias moved out to 0.25 mm from their pads, and vias
-  placed by the scripts keep 0.2 mm. Measured against the pads' bounding boxes, 13 of the 442 vias
+  placed by the scripts keep 0.2 mm. Measured against the pads' bounding boxes, 12 of the 441 vias
   are still within 0.15 mm (it was about 90); round pads make that an overestimate, and all pass
   the 0.127 mm clearance rule. Plugged vias remain unavailable; order them tented.
 - **R10. Tombstoning risk.** The ground pads of the small capacitors and resistors (85 pads) no longer
@@ -198,11 +237,16 @@ Accepted as they are (owner, on my recommendation), to test on the first board:
   let the 2.4 GHz transmitter in. Look for bursts at the radio's connection interval in a
   shorted-input recording. The remedy would be a 0201 capacitor across each pair at the pins.
 
-Not done (nobody asked for them; say if you want them):
+Added afterwards, at the owner's request:
 
-- R5, the motor resistor (0805), dissipates about 150 mW if the motor stalls at 4.2 V (reviewer's
-  figure, not re-checked). A 3.3 V pad beside the SWD pads on the back. A place to clip a scope
-  ground. Reference designators for the arrays.
+- **Motor resistor R5** is a 1206 part rated 0.25 W (was 0805); a stalled motor at 4.2 V puts about
+  0.15 W into it.
+- **TP23, 3.3 V**, a bare pad on the back at (44.5, 17.3) beside the SWD pads, so a probe can sense
+  the target's supply. It hangs on the XIAO's 3V3 pin, before link R21.
+- **TP6, scope ground**: a plated 1.0 mm hole in a 2.0 mm pad at (6.5, 20.8), marked GND. Solder a
+  wire loop into it for bring-up and cut it off before the pod goes into a shell.
+
+Still not done: reference designators on the silkscreen for the ESD arrays and passives.
 
 Mechanical, from datasheets (reviewer only unless stated). Nothing here is decided:
 
@@ -213,7 +257,8 @@ Mechanical, from datasheets (reviewer only unless stated). Nothing here is decid
 - The battery plug leaves over the top edge and needs 8 to 10 mm of shell beyond it.
 - The XIAO's reset button is at about (47.1, 4.2): reachable only through a hole from above.
 - Parts stand within 0.3 to 0.45 mm of every edge, so a panel needs routed tabs (V-cut needs 0.4 mm
-  copper clearance, the board has 0.3) and there is no lip to clamp. No mounting holes, no fiducials.
+  copper clearance, the board has 0.3) and there is no lip to clamp. The assembly frame above does
+  that. The pod itself has no mounting holes and no fiducials; the frame carries the fiducials.
 - The strip tails enter with contacts facing the pod; whether the pod sits beside or on top of the
   strip decides which face of the tail carries them. The FH12 is rated for 20 insertions.
 
@@ -222,12 +267,12 @@ Mechanical, from datasheets (reviewer only unless stated). Nothing here is decid
 The board is `pod/emg-pod.kicad_pcb`: 49 x 49 mm with a 7 x 12.4 mm notch in the top edge, four layers,
 127 assembled parts, all on top.
 KiCad 9.0.9 DRC, with the rules listed in `docs/sources.md`, reports 0 errors, 0 warnings and nothing
-unconnected (`out/drc.rpt`). `gen/fab.py` also compared all 552 pads with the net tables in
+unconnected (`out/drc.rpt`). `gen/fab.py` also compared all 554 pads with the net tables in
 `gen/design.py`: no difference. DRC checks the board against its own rules and nets; it says nothing
 about whether the circuit works, and nothing here has been built.
 
-How it was routed: `gen/board.py` draws 933 fixed tracks and vias (the electrode lines and what is
-listed in `README.md`); Freerouting and `gen/finish.py` did the rest. 442 vias in all, 221 of them
+How it was routed: `gen/board.py` draws 938 fixed tracks and vias (the electrode lines and what is
+listed in `README.md`); Freerouting and `gen/finish.py` did the rest. 441 vias in all, 215 of them
 ground.
 
 With the notch, everything between the XIAO and the left half passes a corridor 13 mm high below it.
@@ -248,16 +293,18 @@ row and battery pad that must reach the left half, plus VBUS, cross on the back 
   Compare signal strength with a bare XIAO at bring-up.
 - **Supplies share layer 3.** DVDD above y = 26.0 mm, the 3.0 V analog rail below, ground fill in the
   rest. Layer 2 is one ground plane with no splits; its openings are via holes and the notch.
-- **Four bare pads on the back** (SWDIO, SWCLK, NRST, GND) under the XIAO's own SWD pads, for a probe.
-  No parts are assembled there, so assembly stays single-sided.
+- **Five bare pads on the back** (SWDIO, SWCLK, NRST, GND, 3V3) under and beside the XIAO's own SWD
+  pads, for a probe. No parts are assembled there, so assembly stays single-sided. The scope ground
+  post TP6 is a plated hole and so shows on the back too.
 - **"Route each pair together"** holds from connector to converter: the two lines of a pair are
   neighbours all the way, 0.5 mm apart, over the ground plane. It does not hold for the short
   branches to the ESD arrays and the filter capacitors, which fan out on the back one by one.
 
 ### Not verified
 
-- **Assembly panel.** See "What Standard assembly changes for the order" above.
-- **Rotations in the placement file** (`out/fab/cpl-jlcpcb.csv`) are KiCad's angles with no correction
+- **Assembly frame.** Drawn and DRC clean, not seen by JLCPCB. See "What Standard assembly changes
+  for the order" above.
+- **Rotations in the placement file** (`cpl-jlcpcb.csv`, the same in `out/fab/` and `out/fab-panel/`) are KiCad's angles with no correction
   for JLCPCB's reel directions. Check every polarised part in JLCPCB's placement preview before
   paying: U1, U2, U100, U200, the ten ESD arrays, Q1, Q2, D1, C130, C230, J1, J100, J200.
 - **Tracks and vias under the strip connectors.** Each electrode line has a branch and a via under the
@@ -280,8 +327,10 @@ row and battery pad that must reach the left half, plus VBUS, cross on the back 
 - **Digital signals near the inputs.** The routers were kept out of the areas around the input lines
   (the fan-out on the back around each converter, the stubs under it on the front), and `gen/fab.py`
   confirms no routed track is inside them. It also measures how close the tracks and vias of any
-  other signal come to those of an input line on the same layer: nothing comes within 1 mm (the
-  nearest are AVDD_EN at 1.03 mm, MOSI at 1.04 mm and START at 1.06 mm, centre to centre). Crossings
+  other signal come to those of an input line on the same layer. In this run one comes within
+  1 mm: the converters' RESET line runs for 1.3 mm at 0.61 mm (centre to centre) from one input
+  line of converter B, on the back at (37 to 38.3, 26.1), just outside the reserved area. RESET
+  only changes at start-up. Next are the converter clock and AVDD_EN at 1.06 mm. Crossings
   on the opposite outer layer have both planes in between and are not counted. Whether that is quiet
   enough is for the first board to show: record with the inputs shorted and look for the 2 kHz frame
   rate and its harmonics.
@@ -292,7 +341,7 @@ row and battery pad that must reach the left half, plus VBUS, cross on the back 
 
 ## Answers to the handoff's open items
 
-- Sense stock and assembly type: in stock (123), Standard Only; the owner chose Standard assembly.
+- Sense stock and assembly type: in stock (120), Standard Only; the owner chose Standard assembly.
 - XIAO 5V pin and battery pads: the 5V pin is the USB VBUS net, wired straight to the connector and the
   charger input; the BAT pad is the charger output with 2.2 uF on it. Same in Seeed's v1.1 and v1.2
   schematics. On battery the 5V pin is pulled to ground by 100k.

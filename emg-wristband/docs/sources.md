@@ -51,7 +51,7 @@ column is what `gen/board.py` uses.
 | Copper to a routed board edge 0.2 mm | 0.3 mm |
 | SMD pad to pad, different nets, 0.15 mm; pad to track 0.1 mm | Closest pads are the ESD arrays' at 0.15 mm (library footprint); pad to track 0.127 mm |
 | Inner layer: via hole to copper 0.2 mm | Planes keep 0.15 mm from the via pad, 0.25 mm from the hole (0.2 mm from the pad merged the clearances of neighbouring vias into slots) |
-| Silkscreen: 1.0 mm text height, 0.15 mm line (as the reviewer read the page; I did not re-read it) | All text 1.0 mm or 1.5 mm high, strokes 0.15 mm or more |
+| Silkscreen: 1.0 mm text height, 0.15 mm line (the reviewer's reading; JLCPCB's ordering notes say the same) | All text 1.0 mm or 1.5 mm high, strokes 0.15 mm or more |
 | Same-net track spacing 0.25 mm | **Not checked.** KiCad has no rule for it and the autorouted tracks were not inspected for it |
 
 The page states no default via covering for 4-layer boards. The Gerbers have no solder-mask openings
@@ -61,6 +61,30 @@ From jlcpcb.com/capabilities/pcb-assembly-capabilities: Economic assembly takes 
 10 x 10 mm, single-sided, rails and fiducials "Not necessary"; Standard takes 70 x 70 mm to
 460 x 500 mm, single or double sided, rails and fiducials "Necessary". Finest IC pin spacing 0.4 mm
 (Economic) and 0.35 mm (Standard); the board's finest is 0.5 mm.
+
+### What the assembly frame was drawn to (read 2026-11-28)
+
+Read through a page-fetching helper from JLCPCB's capability and help pages on panels, edge rails,
+fiducials and tooling holes; I did not see the pages myself, and they describe panels of several
+boards. The right-hand column is what `gen/panel.py` draws.
+
+| On JLCPCB's pages | The frame |
+|---|---|
+| Standard assembly: 70 x 70 mm minimum; edge rails and fiducials "Necessary" | 70 x 70 mm, rails on all four sides |
+| Edge rails at least 5 mm | 8 mm and 8.5 mm |
+| Fiducials: 1 mm copper, 2 mm mask opening, three or four, centred 3.85 mm from the panel edges | Three, as described, not symmetric |
+| Tooling holes for assembly: 2 mm | Four, unplated, centred 3.85 mm from the edges |
+| Board spacing in a panel 1.6 or 2 mm | Slot 2 mm (3 mm on the USB side) |
+| Break-off tabs at least 5 mm wide with perforations; holes 0.5 to 0.8 mm, 0.2 to 0.3 mm between them | Tabs 5 mm; six 0.5 mm holes per tab, 0.3 mm between them |
+| Smallest unplated hole 0.5 mm; unplated hole to track 0.2 mm | Holes touch the pod's edge from outside; the pod's copper is 0.3 mm inside it |
+| Ordering notes (jlcpcb.com/help/article/instructions-for-ordering, updated 2026-11-10): outline, slots and cut-outs drawn 0.15 mm wide on the outline layer; "Panel by Customer" takes up to 10 designs, a customer-panelised "Single PCB" up to 5; boards of 50 x 50 mm or less are hard to mill and panelising is recommended; silkscreen text at least 1 mm high with 0.15 mm lines | Outline 0.15 mm wide; one design; text 1.0 mm |
+
+Not found on any page read: how one board in a customer-drawn frame is classified on the order form,
+and where the order number is printed.
+
+Motor resistor R5: C17913, UNI-ROYAL 1206W4F120JT5E, 12 ohm 1 %, 250 mW, as listed in the public
+JLCPCB parts index at jlcsearch.tscircuit.com (read 2026-11-28); stock and assembly type from the
+part page (`out/stock-check.md`).
 
 ## Other layout notes
 

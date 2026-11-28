@@ -172,17 +172,19 @@ def drc():
     return err, warn, len(d.get("unconnected_items", []))
 
 
-def main():
-    shutil.rmtree(FAB, ignore_errors=True)
-    os.makedirs(os.path.join(FAB, "gerber"))
-    g = os.path.join(FAB, "gerber")
+def export(pcb, out, name):
+    """Gerbers, drill files and their zip, the placement file and the BOM for one board file, into a fresh
+    directory. Returns (number of gerber and drill files, number of placements)."""
+    shutil.rmtree(out, ignore_errors=True)
+    g = os.path.join(out, "gerber")
+    os.makedirs(g)
     subprocess.run(["kicad-cli", "pcb", "export", "gerbers", "--layers", LAYERS, "--subtract-soldermask",
-                    "--no-x2", "-o", g + "/", PCB], check=True, capture_output=True)
+                    "--no-x2", "-o", g + "/", pcb], check=True, capture_output=True)
     subprocess.run(["kicad-cli", "pcb", "export", "drill", "--format", "excellon", "--excellon-units", "mm",
-                    "--excellon-separate-th", "--generate-map", "--map-format", "gerberx2", "-o", g + "/", PCB],
+                    "--excellon-separate-th", "--generate-map", "--map-format", "gerberx2", "-o", g + "/", pcb],
                    check=True, capture_output=True)
-    shutil.make_archive(os.path.join(FAB, "emg-pod-gerbers"), "zip", g)
-    board = pcbnew.LoadBoard(PCB)
+    shutil.make_archive(os.path.join(out, name), "zip", g)
+    board = pcbnew.LoadBoard(pcb)
     rows = []
     for fp in board.GetFootprints():
         if fp.GetAttributes() & pcbnew.FP_EXCLUDE_FROM_POS_FILES:
@@ -193,11 +195,17 @@ def main():
         rows.append((fp.GetReference(), fp.GetValue(), name, round(pcbnew.ToMM(p.x), 4), round(-pcbnew.ToMM(p.y), 4),
                      rot, "top"))
     rows.sort(key=lambda r: (r[0].rstrip("0123456789"), int("".join(c for c in r[0] if c.isdigit()))))
-    with open(os.path.join(FAB, "cpl-jlcpcb.csv"), "w", newline="") as f:
+    with open(os.path.join(out, "cpl-jlcpcb.csv"), "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["Designator", "Val", "Package", "Mid X", "Mid Y", "Rotation", "Layer"])
         w.writerows(rows)
-    shutil.copy(os.path.join(ROOT, "out", "bom-jlcpcb.csv"), os.path.join(FAB, "bom-jlcpcb.csv"))
+    shutil.copy(os.path.join(ROOT, "out", "bom-jlcpcb.csv"), os.path.join(out, "bom-jlcpcb.csv"))
+    return len(os.listdir(g)), len(rows)
+
+
+def main():
+    files, placed = export(PCB, FAB, "emg-pod-gerbers")
+    board = pcbnew.LoadBoard(PCB)
     for side in ("top", "bottom"):
         subprocess.run(["kicad-cli", "pcb", "render", "--side", side, "--width", "1800", "--height", "1800",
                         "-o", os.path.join(ROOT, "out", f"board-{side}.png"), PCB], capture_output=True)
@@ -206,7 +214,7 @@ def main():
     holes = check_planes(board)
     tight, close = check_vias(board)
     err, warn, open_ = drc()
-    print(f"{len(os.listdir(g))} gerber and drill files, {len(rows)} placements, {pads} pads on the right nets")
+    print(f"{files} gerber and drill files, {placed} placements, {pads} pads on the right nets")
     print(f"DRC: {err} errors, {warn} warnings, {open_} unconnected")
     print(f"router tracks inside the areas kept for the input lines: {len(inside)}" + (f" {inside[:6]}" if inside else ""))
     print("other signals nearest to an input line on the same layer (mm between centre lines, complete up to 1 mm): "

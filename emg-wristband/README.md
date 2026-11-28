@@ -5,8 +5,8 @@ with a USB interlock, and a vibration-motor driver. The brief is in `CLAUDE.md`.
 uncertain is in `OPEN.md`; read that before trusting anything here.
 
 Status (2026-11-28): schematic drawn and ERC clean; board laid out and routed, 49 x 49 mm with a notch
-under the antenna, four layers; reviewed once and reworked; fabrication files written. Nothing has been
-ordered or built. The layout's open points are under
+under the antenna, four layers; reviewed once and reworked; fabrication files written, for the single
+board and for the board in a 70 x 70 mm assembly frame. Nothing has been ordered or built. The layout's open points are under
 "Layout" in `OPEN.md`.
 
 ## Where things are
@@ -17,10 +17,11 @@ ordered or built. The layout's open points are under
 | `out/bom-jlcpcb.csv` | Bill of materials from the schematic, JLCPCB columns, one LCSC number per line |
 | `out/stock-check.md` | Stock and assembly type of every BOM line, with the date it was read |
 | `out/erc.rpt` | KiCad's ERC report |
-| `out/fab/` | Gerbers and drill files (also zipped), `cpl-jlcpcb.csv` (placement) and the BOM, for JLCPCB |
-| `out/drc.rpt` | KiCad's DRC report for the routed board |
-| `out/board-top.png`, `out/board-bottom.png` | KiCad's rendering of the two sides of the bare board |
-| `pod/` | The KiCad 9 project (`emg-pod.kicad_pro`, schematic and `emg-pod.kicad_pcb`). Opens in KiCad 9 or newer |
+| `out/fab/` | The single board: Gerbers and drill files (also zipped), `cpl-jlcpcb.csv` (placement) and the BOM |
+| `out/fab-panel/` | The same board in its 70 x 70 mm assembly frame: **the files for a JLCPCB Standard-assembly order** |
+| `out/drc.rpt`, `out/drc-panel.rpt` | KiCad's DRC reports for the routed board and for the frame |
+| `out/board-top.png`, `out/board-bottom.png`, `out/panel-top.png` | KiCad's rendering of the bare board, both sides, and of the frame |
+| `pod/` | The KiCad 9 project (`emg-pod.kicad_pro`, schematic and `emg-pod.kicad_pcb`) and the frame (`emg-pod-panel.kicad_pcb`). Opens in KiCad 9 or newer |
 | `pod/lib/` | Every symbol the schematic uses, and Seeed's XIAO footprint (plus a copy without the two NFC pads) |
 | `gen/` | The Python that writes the schematic and the board |
 | `tools/` | JLCPCB stock lookup |
@@ -45,13 +46,14 @@ the datasheets), and exports the PDF and BOM. It exits non-zero if ERC or the co
 
 ## The board is generated too
 
-Four steps, each a script. **Edits made in KiCad's board editor are lost when they run again**, same
+Five steps, each a script. **Edits made in KiCad's board editor are lost when they run again**, same
 as for the schematic.
 
     /usr/bin/python3 gen/board.py                      # placement, rules, fixed routes -> pod/emg-pod-unrouted.kicad_pcb
     /usr/bin/python3 gen/route.py freerouting-2.1.0.jar   # autoroute the rest (Freerouting, about 9 minutes)
     /usr/bin/python3 gen/finish.py                     # leftovers, ground pours, plane vias, silkscreen -> pod/emg-pod.kicad_pcb
     /usr/bin/python3 gen/fab.py                        # Gerbers, drill, placement file -> out/fab/
+    /usr/bin/python3 gen/panel.py                      # the board in its assembly frame -> pod/emg-pod-panel.kicad_pcb, out/fab-panel/
 
 They need the `pcbnew` Python module that comes with KiCad 9 (the system Python on Ubuntu) and, for
 `route.py`, Java and the Freerouting 2.1.0 jar from github.com/freerouting/freerouting (not in this repo).
@@ -76,8 +78,15 @@ They need the `pcbnew` Python module that comes with KiCad 9 (the system Python 
   how close vias come to pads, and writes the full DRC report. It exits non-zero unless DRC has no
   errors, nothing is unconnected, the reserved areas are clean and the planes have no gaps.
 
+- `gen/panel.py` copies the finished board into a 70 x 70 mm frame (JLCPCB's smallest size for
+  Standard assembly): a routed slot around the board, five tabs with a row of small holes each,
+  three fiducials and four tooling holes on the rails. It does not move the board or refill its
+  zones, checks that all copper is the same as in the single board, and runs DRC on the result.
+  Run it again whenever `pod/emg-pod.kicad_pcb` changes. How to order and what is unverified:
+  `OPEN.md`.
+
 Any change to `gen/board.py` moves many of the autorouted tracks on the next run. The board in `pod/`
-is the result of one run, and `out/fab/` was made from exactly that file.
+is the result of one run, and `out/fab/` and `out/fab-panel/` were made from exactly that file.
 
 Layers: 1 signal and parts, 2 ground (one plane, no splits), 3 supplies (DVDD above y = 26.0 mm, AVDD
 below, ground

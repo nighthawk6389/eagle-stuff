@@ -12,3 +12,4 @@ pod/*.kicad_pcb-bak
 logs/
 # the repository ignores *.drl; the pod's drill files belong with its Gerbers
 !out/fab/gerber/*.drl
+!out/fab-panel/gerber/*.drl
