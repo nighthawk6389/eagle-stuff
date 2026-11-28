@@ -157,7 +157,7 @@ ground.
   bare one at the same distance. If it is poor: cut a slot in the board under the antenna, or turn
   the module round so the antenna reaches the right edge and plug USB in across the board.
 - **Supplies share layer 3.** +3V3 above y = 27.6 mm, the 3.0 V analog rail below, ground fill in the
-  rest. Layer 2 is ground with no splits; its only openings are via holes.
+  rest. Layer 2 is ground with no splits; its only openings are via holes and the antenna window.
 - **Four bare pads on the back** (SWDIO, SWCLK, NRST, GND) under the XIAO's own SWD pads, for a probe.
   No parts are assembled there, so assembly stays single-sided.
 - **"Route each pair together"** holds from connector to converter: the two lines of a pair are
