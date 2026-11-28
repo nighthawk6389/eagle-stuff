@@ -15,6 +15,8 @@ import sys
 import pcbnew
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import board as B  # noqa: E402
 POD = os.path.join(os.path.dirname(HERE), "pod")
 SRC = os.path.join(POD, "emg-pod-unrouted.kicad_pcb")
 DST = os.path.join(os.path.dirname(HERE), "out", "route", "routed.kicad_pcb")
@@ -43,6 +45,21 @@ def main():
         s.SetLayer(pcbnew.Edge_Cuts)
         s.SetWidth(pcbnew.FromMM(0.1))
         board.Add(s)
+    # The areas kept for the input lines become keep-outs for the router (again only on this copy).
+    for layer, qx0, qy0, qx1, qy1 in B.quiet_zones():
+        k = pcbnew.ZONE(board)
+        k.SetIsRuleArea(True)
+        k.SetLayer(layer)
+        k.SetDoNotAllowTracks(True)
+        k.SetDoNotAllowVias(True)
+        k.SetDoNotAllowPads(False)
+        k.SetDoNotAllowFootprints(False)
+        (k.SetDoNotAllowZoneFills if hasattr(k, "SetDoNotAllowZoneFills") else k.SetDoNotAllowCopperPour)(True)
+        o = k.Outline()
+        o.NewOutline()
+        for qx, qy in ((qx0, qy0), (qx1, qy0), (qx1, qy1), (qx0, qy1)):
+            o.Append(pcbnew.FromMM(B.OX + qx), pcbnew.FromMM(B.OY + qy))
+        board.Add(k)
     assert pcbnew.ExportSpecctraDSN(board, dsn), "DSN export failed"
     # Ground is not autorouted: its pads are joined by the pours and planes (gen/finish.py).
     text = open(dsn).read()

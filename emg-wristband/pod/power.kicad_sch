@@ -1874,7 +1874,7 @@
 		(uuid "70908623-b659-51ea-8c29-de237e3da30b")
 		(property "Reference" "TP1" (at 219.02 43.18 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 223.52 46.18 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 223.52 43.18 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1925,7 +1925,7 @@
 		(uuid "7801e962-0b81-5a71-8dcd-0f3a5e44b403")
 		(property "Reference" "TP2" (at 219.02 50.8 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 223.52 53.8 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 223.52 50.8 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1976,7 +1976,7 @@
 		(uuid "0ef99852-bef9-50fe-8994-63f1cd98086e")
 		(property "Reference" "TP3" (at 219.02 58.42 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 223.52 61.42 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 223.52 58.42 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -2027,7 +2027,7 @@
 		(uuid "2aee7d26-97c8-53d7-a1f1-dd0faf4e0628")
 		(property "Reference" "TP4" (at 219.02 66.04 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 223.52 69.04 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 223.52 66.04 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -2078,7 +2078,7 @@
 		(uuid "a526c229-e845-5f79-9b1e-799faf5480d5")
 		(property "Reference" "TP5" (at 219.02 73.66 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 223.52 76.66 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 223.52 73.66 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

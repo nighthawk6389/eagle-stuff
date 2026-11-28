@@ -23,7 +23,7 @@ LIB = {"RN47K": "emgpod:R_Array_4", "ADS1298": "emgpod:ADS1298IPAG", "XIAO": "em
        "ESD": "emgpod:TPD4E001DRL", "NFET": "Transistor_FET:AO3400A", "SCHOTTKY": "Device:D_Schottky",
        "FPC20": "Connector_Generic_MountingPin:Conn_01x20_MountingPin",
        "JST_PH2": "Connector_Generic_MountingPin:Conn_01x02_MountingPin", "TANT22U": "Device:C_Polarized"}
-FP_TP = "TestPoint:TestPoint_Pad_D1.0mm"
+FP_TP = "emgpod:TestPoint_Pad_D1.0mm_bare"     # KiCad's 1 mm pad without its silkscreen ring (labels go there)
 FP_MOTOR = "Connector_Wire:SolderWire-0.127sqmm_1x02_P3.7mm_D0.48mm_OD1mm"
 
 
@@ -283,6 +283,16 @@ def mcu_sheet(s):
            (175.26, 143.0), 1.1, justify="left top")
 
 
+# Which electrode line each ESD channel protects. An array keeps two whole pairs; the order inside it
+# follows the board, where the four lines reach the array as one bundle without crossing (gen/board.py).
+ESD_IO = [
+    {1: "E2P", 2: "E1N", 4: "E1P", 5: "E2N"},
+    {1: "E4P", 2: "E4N", 4: "E3P", 5: "E3N"},
+    {1: "E5P", 2: "E5N", 4: "E6N", 5: "E6P"},
+    {1: "E8P", 2: "E7N", 4: "E7P", 5: "E8N"},
+]
+
+
 def afe_sheet(s, X):
     """One converter block: strip connector, ESD, input network, ADS1298 and its decoupling."""
     d = Draw(s)
@@ -310,7 +320,7 @@ def afe_sheet(s, X):
     for k in range(5):
         y = 111.76 + 22.86 * k
         if k < 4:
-            ios = {1: f"{P}E{2 * k + 1}P", 2: f"{P}E{2 * k + 1}N", 4: f"{P}E{2 * k + 2}P", 5: f"{P}E{2 * k + 2}N"}
+            ios = {pin: P + line for pin, line in ESD_IO[k].items()}
         else:
             ios = {1: "BIAS", 2: None, 4: None, 5: None}
         u = d.add("ESD", f"U{b + 1 + k}", 40.64, y, 0, {**ios, 3: "GND", 6: "AVDD"},

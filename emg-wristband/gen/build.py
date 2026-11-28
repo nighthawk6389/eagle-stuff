@@ -33,7 +33,7 @@ def write_project():
                 '(uri "${KIPRJMOD}/lib/emgpod.kicad_sym")(options "")(descr "Symbols used by the pod"))\n)\n')
     with open(os.path.join(POD, "fp-lib-table"), "w") as f:
         f.write('(fp_lib_table\n\t(version 7)\n\t(lib (name "emgpod")(type "KiCad")'
-                '(uri "${KIPRJMOD}/lib/emgpod.pretty")(options "")(descr "Seeed XIAO footprint"))\n)\n')
+                '(uri "${KIPRJMOD}/lib/emgpod.pretty")(options "")(descr "Seeed XIAO footprint and a bare test pad"))\n)\n')
     pro = os.path.join(POD, "emg-pod.kicad_pro")
     if not os.path.exists(pro):
         with open(pro, "w") as f:

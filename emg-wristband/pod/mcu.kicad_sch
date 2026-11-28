@@ -904,7 +904,7 @@
 		(uuid "32ac22cd-4eae-5c75-a35a-aae2039f6789")
 		(property "Reference" "TP10" (at 180.92 40.64 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 43.64 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 40.64 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -941,7 +941,7 @@
 		(uuid "6bef94ec-bbcf-5bcc-948b-b0708d78396c")
 		(property "Reference" "TP11" (at 180.92 48.26 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 51.26 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 48.26 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -978,7 +978,7 @@
 		(uuid "ed28d147-c77d-53dd-b0a5-5ce6c909b260")
 		(property "Reference" "TP12" (at 180.92 55.88 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 58.88 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 55.88 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1015,7 +1015,7 @@
 		(uuid "4e30b965-eaf7-58ba-9ddf-fc67fea8f1b4")
 		(property "Reference" "TP13" (at 180.92 63.5 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 66.5 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 63.5 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1052,7 +1052,7 @@
 		(uuid "3fcf1315-0365-5986-bd0f-d191010dbd37")
 		(property "Reference" "TP14" (at 180.92 71.12 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 74.12 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 71.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1089,7 +1089,7 @@
 		(uuid "9fbd3f0c-2765-53fe-9663-fa40f98cef5e")
 		(property "Reference" "TP15" (at 180.92 78.74 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 81.74 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 78.74 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1126,7 +1126,7 @@
 		(uuid "f9aff341-3a74-55ae-8a8c-efb362908dbc")
 		(property "Reference" "TP16" (at 180.92 86.36 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 89.36 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 86.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1163,7 +1163,7 @@
 		(uuid "84407aa7-71a0-56f2-97f4-3952091e1a66")
 		(property "Reference" "TP17" (at 180.92 93.98 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 96.98 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 93.98 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1200,7 +1200,7 @@
 		(uuid "2da872c3-2f42-5b35-b7ca-cfc8763254b2")
 		(property "Reference" "TP18" (at 180.92 101.6 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 104.6 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 101.6 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1237,7 +1237,7 @@
 		(uuid "0c621c3f-930a-501e-bc85-05145e0fe7bc")
 		(property "Reference" "TP19" (at 180.92 109.22 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 112.22 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 109.22 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1269,7 +1269,7 @@
 		(uuid "4bd6998d-db43-59bc-9e3e-ac4ccc97e819")
 		(property "Reference" "TP20" (at 180.92 116.84 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 119.84 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 116.84 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1301,7 +1301,7 @@
 		(uuid "226befe6-051a-59d2-b78d-5a9d121ed530")
 		(property "Reference" "TP21" (at 180.92 124.46 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 127.46 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 124.46 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1333,7 +1333,7 @@
 		(uuid "3d6a0401-d620-50d3-b2dd-d7d213136e92")
 		(property "Reference" "TP22" (at 180.92 132.08 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 185.42 135.08 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 185.42 132.08 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

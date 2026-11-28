@@ -42,7 +42,7 @@ class Space:
     def __init__(self, brd, netname, width=0.2):
         self.brd, self.netname, self.net, self.width = brd, netname, brd.FindNet(netname), width
         self.via_no = {lay: self._others(lay, B.CLEAR + B.VIA_D / 2 + 0.02) for lay in (F, BK)}
-        self.track_no = {lay: self._others(lay, B.CLEAR + width / 2 + 0.04) for lay in (F, BK)}
+        self.track_no = {lay: self._others(lay, B.CLEAR + width / 2 + 0.04, quiet=True) for lay in (F, BK)}
         self.own = {lay: pcbnew.SHAPE_POLY_SET() for lay in (F, BK)}     # this net's own pads
         for fp in brd.GetFootprints():
             for pad in fp.Pads():
@@ -61,7 +61,8 @@ class Space:
         self.pads_no.Simplify()
         self.holes = [(v.GetPosition().x, v.GetPosition().y) for v in brd.GetTracks() if isinstance(v, pcbnew.PCB_VIA)]
 
-    def _others(self, layer, margin):
+    def _others(self, layer, margin, quiet=False):
+        """Where this net's copper may not be on a layer. quiet = also the areas kept for the input lines."""
         ps = pcbnew.SHAPE_POLY_SET()
         for t in self.brd.GetTracks():
             if t.GetNetname() == self.netname:
@@ -77,6 +78,12 @@ class Space:
             if z.GetIsRuleArea():
                 for i in range(z.Outline().OutlineCount()):
                     keep.AddOutline(z.Outline().Outline(i))
+        if quiet:
+            for lay, x0, y0, x1, y1 in B.quiet_zones():
+                if lay == layer:
+                    keep.NewOutline()
+                    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+                        keep.Append(FromMM(B.OX + x), FromMM(B.OY + y))
         if keep.OutlineCount():
             keep.Inflate(FromMM(margin), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, FromMM(0.01))
             ps.Append(keep)

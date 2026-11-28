@@ -2912,7 +2912,7 @@
 			)
 		)
 	)
-	(label "A_E1P"
+	(label "A_E2P"
 		(at 29.21 107.95 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "2c881a52-7969-5ff3-b5e3-4cd360bafa80")
@@ -2922,7 +2922,7 @@
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "c254e978-8a81-5bb4-b557-ad61a056ddda")
 	)
-	(label "A_E2P"
+	(label "A_E1P"
 		(at 29.21 113.03 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "55cbf88d-a0d4-5c68-9863-d0c1c545287a")
@@ -3047,22 +3047,22 @@
 			)
 		)
 	)
-	(label "A_E3P"
+	(label "A_E4P"
 		(at 29.21 130.81 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "adcb76c6-e962-5edb-89b2-9646d4808cfd")
 	)
-	(label "A_E3N"
+	(label "A_E4N"
 		(at 29.21 133.35 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "f2d0c6c5-996e-566f-955b-5a741cd40df8")
 	)
-	(label "A_E4P"
+	(label "A_E3P"
 		(at 29.21 135.89 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "88ae0bd4-707f-5bc9-9360-f3f20722e6db")
 	)
-	(label "A_E4N"
+	(label "A_E3N"
 		(at 29.21 138.43 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "53085c88-d876-58e9-9072-c5c36a1fcc2f")
@@ -3192,12 +3192,12 @@
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "99be3f89-dff9-529a-aecb-34be7146ec69")
 	)
-	(label "A_E6P"
+	(label "A_E6N"
 		(at 29.21 158.75 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "aeab3503-25fa-5965-a599-d3d30454a568")
 	)
-	(label "A_E6N"
+	(label "A_E6P"
 		(at 29.21 161.29 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "e5c45676-58fe-571d-a84c-dcac04982eda")
@@ -3317,7 +3317,7 @@
 			)
 		)
 	)
-	(label "A_E7P"
+	(label "A_E8P"
 		(at 29.21 176.53 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "1354a921-1797-5968-a75a-4882687e7e56")
@@ -3327,7 +3327,7 @@
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "486a45bb-1661-58c9-b7c9-03a43f0c7c4c")
 	)
-	(label "A_E8P"
+	(label "A_E7P"
 		(at 29.21 181.61 180)
 		(effects (font (size 1.27 1.27)) (justify right bottom))
 		(uuid "7a1226bc-af6b-5742-98c0-963081e37ce1")
@@ -6441,7 +6441,7 @@
 		(uuid "88f009f9-3ea3-59df-be2a-818ffa275b15")
 		(property "Reference" "TP30" (at 313 210.82 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 317.5 213.82 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 317.5 210.82 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -6616,7 +6616,7 @@
 		(uuid "fc82acef-03a9-55ff-bffd-29ce2e4a871f")
 		(property "Reference" "TP31" (at 376.5 231.14 90) (effects (font (size 1.27 1.27)) (justify left)))
 		(property "Value" "TestPoint" (at 381 234.14 90) (effects (font (size 1.27 1.27)) (hide yes)))
-		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "emgpod:TestPoint_Pad_D1.0mm_bare"
 			(at 381 231.14 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import pcbnew
 from pcbnew import FromMM, VECTOR2I
@@ -24,25 +25,28 @@ import lastmile as L  # noqa: E402
 RAW = sys.argv[1] if len(sys.argv) > 1 else os.path.join(B.ROOT, "out", "route", "routed.kicad_pcb")
 PCB = sys.argv[2] if len(sys.argv) > 2 else os.path.join(B.POD, "emg-pod.kicad_pcb")
 PLANES = ("GND", "AVDD", "+3V3")
-KEEP_REF = ("U100", "U200", "U1", "U2", "J1", "J2", "J100", "J200")
 
 
 def mm(p):
     return pcbnew.ToMM(p.x) - B.OX, pcbnew.ToMM(p.y) - B.OY
 
 
+def run_drc(brd, severity="--severity-error"):
+    """KiCad's DRC on a copy of the board in memory, with the project's rules. Returns the report."""
+    work = tempfile.mkdtemp()
+    tmp = os.path.join(work, "check.kicad_pcb")
+    pcbnew.SaveBoard(tmp, brd)
+    shutil.copy(PCB.replace(".kicad_pcb", ".kicad_pro"), os.path.join(work, "check.kicad_pro"))
+    rep = os.path.join(work, "check.json")
+    subprocess.run(["kicad-cli", "pcb", "drc", severity, "--format", "json", "-o", rep, tmp], capture_output=True)
+    data = json.load(open(rep))
+    shutil.rmtree(work, ignore_errors=True)
+    return data
+
+
 def unconnected(brd):
     """What KiCad's DRC reports as unconnected: [(net, (x, y, layer), (x, y, layer))]. Layer None = either."""
-    tmp = PCB + ".check.kicad_pcb"
-    pcbnew.SaveBoard(tmp, brd)
-    shutil.copy(PCB.replace(".kicad_pcb", ".kicad_pro"), tmp.replace(".kicad_pcb", ".kicad_pro"))
-    rep = tmp + ".json"
-    subprocess.run(["kicad-cli", "pcb", "drc", "--severity-error", "--format", "json", "-o", rep, tmp],
-                   capture_output=True)
-    data = json.load(open(rep))
-    for f in (tmp, rep, tmp.replace(".kicad_pcb", ".kicad_pro"), tmp.replace(".kicad_pcb", ".kicad_prl")):
-        if os.path.exists(f):
-            os.remove(f)
+    data = run_drc(brd)
     out = []
     for u in data.get("unconnected_items", []):
         ends = []
@@ -59,6 +63,35 @@ def unconnected(brd):
     return out, len(data.get("unconnected_items", [])), len(data.get("violations", []))
 
 
+def cluster(brd, netname, xy, layer):
+    """Ends of the tracks and vias joined to the copper at xy: [(x, y, layer or None for a via)]."""
+    items = [t for t in brd.GetTracks() if t.GetNetname() == netname]
+
+    def ends(t):
+        if isinstance(t, pcbnew.PCB_VIA):
+            return [(t.GetPosition(), None)]
+        return [(t.GetStart(), t.GetLayer()), (t.GetEnd(), t.GetLayer())]
+
+    def touches(t, p, lay):
+        via = isinstance(t, pcbnew.PCB_VIA)
+        return (via or lay is None or t.GetLayer() == lay) and t.HitTest(p)
+
+    seed = B.V(xy[0], xy[1])
+    seen = {i for i, t in enumerate(items) if touches(t, seed, layer)}
+    todo, out = list(seen), []
+    while todo:
+        t = items[todo.pop()]
+        for p, lay in ends(t):
+            out.append((mm(p)[0], mm(p)[1], lay))
+        for j, u in enumerate(items):
+            if j in seen:
+                continue
+            if any(touches(u, p, lay) for p, lay in ends(t)) or any(touches(t, p, lay) for p, lay in ends(u)):
+                seen.add(j)
+                todo.append(j)
+    return out
+
+
 def complete_signals(brd, skip=PLANES):
     """Route the connections the autorouter gave up on."""
     done = 0
@@ -69,16 +102,20 @@ def complete_signals(brd, skip=PLANES):
         progress = 0
         for net, a, b in todo:
             space = L.Space(brd, net, B.TRACK)
-            short = math.hypot(a[0] - b[0], a[1] - b[1]) < 4.0
-            kw = dict(margin=3.0, step=0.05) if short else dict(margin=6.0)
-            start = (a[0], a[1], a[2] if a[2] is not None else L.F)
-            res = L.maze(space, start, b, **kw)
-            if res is None and a[2] is None:
-                start = (a[0], a[1], L.BK)
-                res = L.maze(space, start, b, **kw)
-            if res:
-                L.lay_down(space, start, res, b)
-                progress += 1
+            # aim at the point DRC named, then at the other ends of the same piece of copper, nearest first
+            others = sorted(set(cluster(brd, net, b[:2], b[2])), key=lambda g: math.hypot(a[0] - g[0], a[1] - g[1]))
+            for goal in ([b] + [g for g in others if g != b])[:8]:
+                short = math.hypot(a[0] - goal[0], a[1] - goal[1]) < 4.0
+                kw = dict(margin=3.0, step=0.05) if short else dict(margin=6.0)
+                start = (a[0], a[1], a[2] if a[2] is not None else L.F)
+                res = L.maze(space, start, goal, **kw)
+                if res is None and a[2] is None:
+                    start = (a[0], a[1], L.BK)
+                    res = L.maze(space, start, goal, **kw)
+                if res:
+                    L.lay_down(space, start, res, goal)
+                    progress += 1
+                    break
         done += progress
         if not progress:
             break
@@ -155,6 +192,8 @@ def stitch(brd, spacing=3.0):
     top = islands(zones["top ground pour"], L.F, need)
     bot = islands(zones["bottom ground pour"], L.BK, need)
     space = L.Space(brd, "GND")
+    ground_vias = {(v.GetPosition().x, v.GetPosition().y) for v in brd.GetTracks()
+                   if isinstance(v, pcbnew.PCB_VIA) and v.GetNetname() == "GND"}
     placed = []
     step = 0.25
     nx, ny = int(B.W / step), int(B.H / step)
@@ -191,7 +230,8 @@ def stitch(brd, spacing=3.0):
                                 break                        # one via is enough for a small island
                         if d != spacing and got:
                             break
-            if not got and layer_islands is top:
+            if not got and layer_islands is top and not any(full.Contains(VECTOR2I(hx, hy)) for hx, hy in space.holes
+                                                              if (hx, hy) in ground_vias):
                 starved.append(full)
     # top islands with no room for a via of their own: lead one of their pads to a via nearby
     lost = []
@@ -206,30 +246,104 @@ def stitch(brd, spacing=3.0):
     return count
 
 
+# Short names printed beside the test points (net -> label); the back has room for the full names.
+TP_LABEL = {"VBAT": "BAT", "AVDD": "AVDD", "+3V3": "3V3", "GND": "GND", "SCLK": "SCK", "MOSI": "MO", "MISO": "MI",
+            "CS_A": "CSA", "CS_B": "CSB", "DRDY_A": "DRA", "DRDY_B": "DRB", "ADS_START": "STA", "ADS_RESET": "RST",
+            "ADS_CLK": "CLK", "BIAS": "BIAS", "SWDIO": "SWDIO", "SWCLK": "SWCLK", "NRST": "NRST"}
+
+
 def silkscreen(brd):
     """Only a few references, plus the labels a person needs with the board in hand."""
-    for fp in brd.GetFootprints():
-        t = fp.Reference()
-        t.SetVisible(fp.GetReference() in KEEP_REF)
-        t.SetTextSize(VECTOR2I(FromMM(0.8), FromMM(0.8)))
-        t.SetTextThickness(FromMM(0.13))
-
-    def text(s, x, y, size=1.0):
+    def text(s, x, y, size=1.0, back=False, width=None):
         t = pcbnew.PCB_TEXT(brd)
         t.SetText(s)
         t.SetPosition(B.V(x, y))
-        t.SetLayer(pcbnew.F_SilkS)
-        t.SetTextSize(VECTOR2I(FromMM(size), FromMM(size)))
-        t.SetTextThickness(FromMM(size * 0.15))
+        t.SetLayer(pcbnew.B_SilkS if back else pcbnew.F_SilkS)
+        t.SetMirrored(back)
+        t.SetTextSize(VECTOR2I(FromMM(width or size), FromMM(size)))
+        t.SetTextThickness(FromMM(max(0.12, size * 0.15)))
         brd.Add(t)
 
-    text("EMG POD rev A", B.W / 2, 41.3, 0.9)
-    text("A", B.BX["A"], 41.0, 1.2)
-    text("B", B.BX["B"], 41.0, 1.2)
+    def line(a, b):
+        g = pcbnew.PCB_SHAPE(brd)
+        g.SetShape(pcbnew.SHAPE_T_SEGMENT)
+        g.SetStart(B.V(*a))
+        g.SetEnd(B.V(*b))
+        g.SetLayer(pcbnew.F_SilkS)
+        g.SetWidth(FromMM(0.15))
+        brd.Add(g)
+
+    # where each visible reference goes (board mm); the library positions land on pads once parts are rotated
+    ref_at = {"U100": (B.BX["A"], B.CHIP_Y - 1.5), "U200": (B.BX["B"], B.CHIP_Y - 1.5), "U1": (37.0, 13.0),
+              "U2": (21.2, 19.2), "J100": (B.BX["A"], 47.3), "J200": (B.BX["B"], 47.3)}
+    for fp in brd.GetFootprints():
+        ref = fp.GetReference()
+        for f in fp.GetFields():                             # LCSC numbers and values stay off the board
+            f.SetVisible(False)
+        t = fp.Reference()
+        t.SetVisible(ref in ref_at)
+        t.SetTextSize(VECTOR2I(FromMM(0.8), FromMM(0.8)))
+        t.SetTextThickness(FromMM(0.13))
+        if ref in ref_at:
+            t.SetPosition(B.V(*ref_at[ref]))
+            t.SetTextAngle(pcbnew.EDA_ANGLE(0, pcbnew.DEGREES_T))
+        if ref == "U1":                                      # the project's footprint has no outline; older boards did
+            for g in list(fp.GraphicalItems()):
+                if g.GetLayer() == pcbnew.F_SilkS:
+                    fp.Remove(g)
+        if ref.startswith("TP"):
+            pad = list(fp.Pads())[0]
+            x, y = mm(pad.GetPosition())
+            label = TP_LABEL[pad.GetNetname()]
+            if fp.GetLayer() == L.BK:                        # two columns on the back: labels outwards
+                text(label, x, y - 1.4 if x > 46.0 else y + 1.4, 0.8, back=True)
+            else:                                            # above the pad; narrow letters, the pads are 2.2 mm apart
+                text(label, x, y - 1.1, 0.8, width=0.62)
+
+    # the XIAO: marks at the two corners of its antenna end (the module is 21 x 17.8 mm)
+    x0, y0, y1 = B.XIAO_X0 - 0.15, B.XIAO_Y0 - 0.15, B.XIAO_Y0 + 17.8 + 0.15
+    for ya, yb in ((y0, y0 + 2.0), (y1, y1 - 2.0)):
+        line((x0, ya), (x0, yb))
+        line((x0, ya), (x0 + 1.4, ya))
+    text("XIAO nRF52840 Sense", 37.0, 14.3, 0.8)
+    text("EMG POD rev A", B.W / 2, 20.0, 1.5, back=True)      # the back has no parts, so the name goes there
+    text("A", B.BX["A"] + 6.3, 38.2, 1.5)
+    text("B", B.BX["B"] + 6.3, 38.2, 1.5)
     text("BAT", 6.0, 12.4, 0.9)
     text("+", 7.0, 11.1, 1.0)
     text("-", 5.0, 11.1, 1.0)
-    text("MOTOR", 14.9, 0.8, 0.7)
+    text("MOTOR", 14.85, 0.85, 0.8)
+
+
+def remove_dangling(brd):
+    """Take out stubs the routers left behind: tracks with a free end, vias joined on one layer only."""
+    removed = 0
+    for _ in range(40):                                      # a stub of several segments comes off one at a time
+        data = run_drc(brd, "--severity-all")
+        spots = [(v["type"], it["pos"]["x"], it["pos"]["y"], it["description"]) for v in data.get("violations", [])
+                 if v["type"] in ("track_dangling", "via_dangling") for it in v["items"]]
+        if not spots:
+            break
+        for kind, x, y, desc in spots:
+            pt = VECTOR2I(FromMM(x), FromMM(y))
+            net = re.search(r"\[([^\]]+)\]", desc)
+            length = re.search(r"length ([0-9.]+) mm", desc)
+            for t in list(brd.GetTracks()):
+                if t.IsLocked() or not net or t.GetNetname() != net.group(1):
+                    continue
+                is_via = isinstance(t, pcbnew.PCB_VIA)
+                if kind == "via_dangling" and is_via and t.GetPosition() == pt:
+                    brd.Remove(t)
+                    removed += 1
+                    break
+                # the report names the track by net, layer and length; the position alone could be a
+                # point it shares with a neighbour that is in use
+                if (kind == "track_dangling" and not is_via and length and t.GetLayerName() in desc
+                        and abs(pcbnew.ToMM(t.GetLength()) - float(length.group(1))) < 0.0006 and t.HitTest(pt)):
+                    brd.Remove(t)
+                    removed += 1
+                    break
+    return removed
 
 
 def ground_pours(brd):
@@ -263,13 +377,21 @@ def main():
     filler.Fill(brd.Zones())
     gnd = stitch(brd)
     filler.Fill(brd.Zones())
-    sig += complete_signals(brd, skip=())             # whatever is still open, plane nets included
-    filler.Fill(brd.Zones())
+    # Whatever is still open, plane nets included. A route the autorouter abandoned half-way blocks
+    # the way, so: try, clear the dead ends, try again, until nothing changes.
+    stubs = 0
+    for _ in range(4):
+        done = complete_signals(brd, skip=())
+        cut = remove_dangling(brd)
+        sig, stubs = sig + done, stubs + cut
+        filler.Fill(brd.Zones())
+        if not done and not cut:
+            break
     silkscreen(brd)
     pcbnew.SaveBoard(PCB, brd)
     left, total, viol = unconnected(brd)
     print(f"completed by the last-mile router: {sig} signal connections | ground links {links} | vias added: "
-          f"supplies {avdd}, ground {gnd}")
+          f"supplies {avdd}, ground {gnd} | stubs removed {stubs}")
     print(f"DRC: {viol} violations, {total} unconnected")
     for net, a, b in left:
         print(f"   still open: {net} ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})")

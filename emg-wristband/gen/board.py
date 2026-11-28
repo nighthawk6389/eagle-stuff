@@ -35,12 +35,51 @@ CONN_Y = None                   # set once the connector footprint has been meas
 CHIP_Y = 29.9
 SPLIT_Y = 27.6                  # layer 3: +3V3 above this line, AVDD below (DVDD pins are above it)
 ROW1, ROW2 = 39.75, 37.7         # resistor-array rows (centre lines)
+FAN_PITCH = 1.2                  # filter-capacitor pitch = spacing of the fan-out lanes under the converter
+FAN_TOP = 2.8                    # first turn row of the fan, below the chip centre
+ESD_X = 10.15                    # ESD arrays: distance of their column from the block centre line
+ESD_N, ESD_S, ESD_BIAS = 41.0, 46.5, 37.75
+TAP = {"A": 1.6, "B": 2.5, "C": 3.4, "D": 4.3}     # tap-via rows under the strip connector, below the pad row
+TAP_ROW = "ABABDCDC" "DCDCBABA"  # row of the tap via of line k: each array's four lines leave as one bundle
 XIAO_X0, XIAO_Y0 = 28.0, 1.0
 BOTTOM = {"TP19", "TP20", "TP21", "TP22"}      # bare pads on the back; no parts are assembled there
 
 
 def V(x, y):
     return VECTOR2I(FromMM(OX + x), FromMM(OY + y))
+
+
+def chip_via_y(k):
+    """Row of the via under the converter for input line k (0 = pin 1): alternate rows, 0.5 mm pin pitch."""
+    return CHIP_Y + (4.2 if k % 2 == 0 else 3.3)
+
+
+def fan(side, i):
+    """Fan-out of the i-th input line counted from the outside on one side (-1 left, +1 right).
+
+    Returns (line index k, y of its filter capacitor). The two outer lines run straight out from their
+    vias; the others climb to their own turn row first.
+    """
+    k = i if side < 0 else 15 - i
+    if i >= 2:
+        return k, round(CHIP_Y + FAN_TOP - FAN_PITCH * (i - 2), 3)
+    lower = k % 2 == 0
+    return k, round(CHIP_Y + FAN_TOP + FAN_PITCH * (2 if lower else 1), 3)
+
+
+def quiet_zones():
+    """Areas kept for the input lines: (layer, x0, y0, x1, y1). The routers lay nothing there.
+
+    On the back, the fan-out from each converter to its filter capacitors; on the front, the stubs under
+    each converter from the input pins to their vias. The fixed routes inside them are drawn by main().
+    They are not KiCad keep-outs (those would reject the fixed routes too): gen/route.py hands them to
+    the autorouter, gen/lastmile.py honours them, gen/fab.py checks the result.
+    """
+    zones = []
+    for bx in BX.values():
+        zones.append((pcbnew.B_Cu, bx - 11.05, CHIP_Y - 3.6, bx + 11.05, CHIP_Y + 5.6))
+        zones.append((pcbnew.F_Cu, bx - 3.95, CHIP_Y + 2.9, bx + 3.95, CHIP_Y + 6.4))
+    return zones
 
 
 def load(fp_id):
@@ -87,7 +126,7 @@ def placement():
     P["TP21"] = (44.5, 6.2, 0)
     P["TP22"] = (44.5, 13.6, 0)
     P["TP30"] = (2.0, 17.8, 0)
-    P["TP31"] = (2.0, 20.2, 0)
+    P["TP31"] = (BX["A"] - 7.75, 37.3, 0)            # bias output: beside the bias parts, below converter A
     # ---- the two converter blocks, identical
     for X, b in (("A", 100), ("B", 200)):
         bx, cy = BX[X], CHIP_Y
@@ -95,14 +134,12 @@ def placement():
         P[f"J{b}"] = (bx, CONN_Y, 0)
         for m in range(4):
             P[f"RN{b + 1 + m}"] = (bx - 3.0 + 2.0 * m, ROW1 if m % 2 == 0 else ROW2, 90)
-        # filter capacitors: converter pins 1-8 on the left of the chip, 9-16 on the right
+        # filter capacitors: converter pins 1-8 on the left of the chip, 9-16 on the right, in fan-out order
         order = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
-        for pin in range(1, 17):
-            ref = f"C{b + 1 + order.index(pin)}"
-            if pin <= 8:
-                P[ref] = (bx - 10.9, cy + 4.2 - 1.2 * (pin - 1), 180)
-            else:
-                P[ref] = (bx + 10.9, cy + 4.2 - 1.2 * (16 - pin), 0)
+        for side in (-1, 1):
+            for i in range(8):
+                k, y = fan(side, i)
+                P[f"C{b + 1 + order.index(k + 1)}"] = (bx + side * 10.9, y, 180 if side < 0 else 0)
         c = b + 20
         left = [(f"C{c + 6}", -5.4), (f"C{c + 7}", -4.2), (f"C{c + 4}", -3.0), (f"C{c + 5}", -1.8),
                 (f"C{c + 13}", -0.6), (f"C{c + 12}", 0.6), (f"C{c + 3}", 1.8), (f"C{c + 2}", 3.0),
@@ -114,22 +151,21 @@ def placement():
         for ref, dy in right:
             P[ref] = (bx + 7.6, cy + dy, 0)
         P[f"C{c + 8}"] = (bx + 7.7, cy + 1.0, 270)       # 10 uF 0603 on VREFP, pad 1 next to pin 24
-        P[f"C{c + 10}"] = (bx + 5.2, cy - 8.3, 180)        # 22 uF tantalum on VCAP1
+        P[f"C{c + 10}"] = (bx + 9.2, cy - 6.5, 90)         # 22 uF tantalum on VCAP1, positive pad at the bottom
         # digital-side resistors above the chip
         P[f"R{b + 21}"] = (bx - 1.3, cy - 8.1, 90)         # DOUT series
         P[f"R{b + 23}"] = (bx + 0.2, cy - 8.1, 90)         # clock series (A) / pull-down (B)
         P[f"R{b + 20}"] = (bx + 1.7, cy - 8.1, 270)        # PWDN pull-up
-        # ESD arrays and their capacitors, either side of the resistor arrays
-        # ESD arrays and their capacitors in the corners beside the connector; the bias one above it
-        # pads in two rows so every one can be reached; the ground pad faces the connector side
-        for n, y in [(4, 42.2), (3, 46.0)]:
-            P[f"U{b + n}"] = (bx - 10.2, y, 90)
-            P[f"C{b + 40 + n}"] = (bx - 10.2, y + 1.9, 0)
-        for n, y in [(2, 42.2), (1, 46.0)]:
-            P[f"U{b + n}"] = (bx + 10.2, y, 270)
-            P[f"C{b + 40 + n}"] = (bx + 10.2, y - 1.9, 180)
-        P[f"U{b + 5}"] = (bx - 9.6, 37.9, 90)
-        P[f"C{b + 45}"] = (bx - 9.6, 40.0, 0)
+        # ESD arrays in a column at each end of the connector, their capacitors between them;
+        # the bias array sits above the left column
+        for side, north, south in ((-1, 4, 3), (1, 1, 2)):
+            cx = bx + side * ESD_X
+            P[f"U{b + north}"] = (cx, ESD_N, 90)
+            P[f"U{b + south}"] = (cx, ESD_S, 90)
+            P[f"C{b + 40 + north}"] = (cx, 43.2, 0)
+            P[f"C{b + 40 + south}"] = (cx, 44.3, 0)
+        P[f"U{b + 5}"] = (bx - ESD_X, ESD_BIAS, 90)
+        P[f"C{b + 45}"] = (bx - ESD_X, ESD_BIAS - 1.7, 0)
         P[f"R{b + 22}"] = (bx + 6.2, 40.2, 0)             # shield link
         if X == "A":
             P["R124"] = (bx - 7.6, cy + 5.4, 180)
@@ -220,7 +256,8 @@ def main():
         fp.SetPosition(V(x, y))
         fp.SetOrientationDegrees(rot)
         if ref in design.BOM:
-            fp.SetField("LCSC", design.BOM[ref][2]) if hasattr(fp, "SetField") else None
+            fp.SetField("LCSC", design.BOM[ref][2])
+            fp.GetFieldByName("LCSC").SetVisible(False)
         if not in_bom:
             fp.SetAttributes(fp.GetAttributes() | pcbnew.FP_EXCLUDE_FROM_BOM | pcbnew.FP_EXCLUDE_FROM_POS_FILES)
         fp.Value().SetVisible(False)
@@ -271,9 +308,23 @@ def main():
         v.SetLocked(lock)
         board.Add(v)
 
-    # ---- fixed routes: every electrode line runs straight from the connector through its resistor to its pin
+    BCU = pcbnew.B_Cu
+
+    def path(points, netname, layer=pcbnew.F_Cu, width=TRACK, first=None):
+        """A locked polyline. first = width of the first segment, where it differs."""
+        for n, (a, b) in enumerate(zip(points[:-1], points[1:])):
+            a, b = (round(a[0], 4), round(a[1], 4)), (round(b[0], 4), round(b[1], 4))
+            if a != b:
+                track(a, b, netname, layer, first if (first and n == 0) else width)
+
+    def expect(ref, num, netname):
+        assert design.NET[(ref, str(num))] == netname, (ref, num, design.NET[(ref, str(num))], netname)
+
+    # ---- fixed routes, front: every electrode line runs straight from the connector through its resistor
+    #      to its converter pin, with one branch to a via under the converter and one under the connector
     for X, b in (("A", 100), ("B", 200)):
         bx = BX[X]
+        xs, e_nets, in_nets, taps = [], [], [], []
         for k in range(16):
             x = round(bx - 3.75 + 0.5 * k, 4)
             m, i = divmod(k, 4)
@@ -287,28 +338,192 @@ def main():
             assert jp[1] > a1[1] > a8[1] > up[1]
             track(jp, a1, e_net, width=FINE)
             track(a8, up, in_net, width=FINE)
-            # branch under the chip to a via; the filter capacitor is reached from there on the back
-            vy = CHIP_Y + (4.2 if k % 2 == 0 else 3.3)
-            track(up, (x, vy), in_net, width=FINE)
-            via((x, vy), in_net)
-            # branch under the connector body to a via; the ESD array is reached from there
-            ey = jp[1] + (1.6 if k % 2 == 0 else 2.5)
-            track(jp, (x, ey), e_net, width=FINE)
-            via((x, ey), e_net)
+            track(up, (x, chip_via_y(k)), in_net, width=FINE)
+            via((x, chip_via_y(k)), in_net)
+            ty = round(jp[1] + TAP[TAP_ROW[k]], 3)
+            track(jp, (x, ty), e_net, width=FINE)
+            via((x, ty), e_net)
+            xs.append(x), e_nets.append(e_net), in_nets.append(in_net), taps.append(ty)
+        jy = pad_xy(f"J{b}", 3)[1]
+        yA, yB, yC, yD = (round(jy + TAP[r], 3) for r in "ABCD")
 
-    # ---- every ESD array and its capacitor share one fixed ground via
+        # ---- back: fan-out from the vias under the converter to a via beside each filter capacitor.
+        #      The lanes are FAN_PITCH apart, so a via to a plane fits between any two of them.
+        order = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+        for side in (-1, 1):
+            xv = round(bx + side * 9.6, 3)
+            for i in range(8):
+                k, yc = fan(side, i)
+                ref = f"C{b + 1 + order.index(k + 1)}"
+                cp = pad_xy(ref, 1)
+                expect(ref, 1, in_nets[k])
+                assert abs(cp[1] - yc) < 1e-3 and abs(cp[0] - (bx + side * 10.42)) < 0.02, (ref, cp)
+                vy = chip_via_y(k)
+                if i >= 2:
+                    path([(xs[k], vy), (xs[k], yc), (xv, yc)], in_nets[k], BCU, first=FINE)
+                else:
+                    d = abs(yc - vy)
+                    path([(xs[k], vy), (xv - side * d, vy), (xv, yc)], in_nets[k], BCU)
+                via((xv, yc), in_nets[k])
+                track((xv, yc), cp, in_nets[k])
+
+        # ---- supply and ground pins of the converter: a via to the plane just inside the pad row, in the
+        #      gaps between the fan-out lanes. (pins, via position from the chip centre, extra corner)
+        chip_vias = [
+            ((49,), (-4.05, -3.75), None),
+            ((50,), (-3.25, -3.70), (-3.70, -3.25)),
+            ((51,), (-4.05, -2.60), None),
+            ((53,), (-4.05, -1.40), None),
+            ((54, 56), (-4.05, -0.20), None),
+            ((57, 58), (-4.05, 1.00), None),
+            ((59,), (-4.05, 2.20), None),
+            ((48,), (-3.75, -4.45), None),
+            ((44, 45, 46), (-2.25, -4.05), None),
+            ((41, 42), (-0.50, -4.05), None),
+            ((33,), (3.75, -4.45), None),
+            ((31, 32), (4.05, -3.75), None),
+            ((23, 25), (4.05, -0.20), None),
+            ((21, 22), (4.05, 1.00), None),
+            ((20,), (4.05, 2.20), None),
+            ((17, 18, 19), (3.25, 2.20), (3.80, 2.75)),
+        ]
+        for pins, (vx, vy), corner in chip_vias:
+            netname = design.NET[(f"U{b}", str(pins[-1]))]
+            vp = (round(bx + vx, 3), round(CHIP_Y + vy, 3))
+            knees = []
+            for n in pins:
+                expect(f"U{b}", n, netname)
+                q = pad_xy(f"U{b}", n)
+                dx, dy = bx - q[0], CHIP_Y - q[1]
+                if abs(dx) > abs(dy):                       # pin on the left or right side
+                    knee = (round(q[0] + (0.9 if dx > 0 else -0.9), 3), q[1])
+                else:
+                    knee = (q[0], round(q[1] + (0.9 if dy > 0 else -0.9), 3))
+                track(q, knee, netname, width=FINE)
+                knees.append(knee)
+            if corner:                                      # the pins are joined, the last one leads to the via
+                path(knees, netname, width=FINE)
+                path([knees[-1], (round(bx + corner[0], 3), round(CHIP_Y + corner[1], 3)), vp], netname, width=FINE)
+            else:
+                for knee in knees:
+                    track(knee, vp, netname, width=FINE)
+            via(vp, netname)
+
+        # CLKSEL (pin 52) is strapped: to the via of ground pin 51, or to that of supply pin 50
+        q = pad_xy(f"U{b}", 52)
+        strap = design.NET[(f"U{b}", "52")]
+        knee = (round(q[0] + 0.9, 3), q[1])
+        track(q, knee, strap, width=FINE)
+        if strap == "GND":
+            track(knee, (round(bx - 4.05, 3), round(CHIP_Y - 2.6, 3)), strap, width=FINE)
+        else:
+            expect(f"U{b}", 50, strap)
+            path([knee, (bx - 4.05, CHIP_Y - 2.0), (bx - 3.6, CHIP_Y - 2.0), (bx - 3.25, CHIP_Y - 2.35),
+                  (bx - 3.25, CHIP_Y - 3.7)], strap, width=FINE)
+
+        # VCAP1 (pin 28): out between the two capacitors beside it, then up to the tantalum's positive pad.
+        # Nothing can cross the fan-out on the back, so this one is drawn here.
+        q, tp = pad_xy(f"U{b}", 28), pad_xy(f"C{b + 30}", 1)
+        vcap = design.NET[(f"U{b}", "28")]
+        expect(f"C{b + 30}", 1, vcap)
+        assert tp[1] < q[1] and abs(tp[0] - (bx + 9.2)) < 0.02, tp
+        path([q, (bx + 6.6, q[1]), (bx + 6.8, q[1] - 0.2), (bx + 8.85, q[1] - 0.2), (bx + 8.85, tp[1])], vcap)
+        tn = pad_xy(f"C{b + 30}", 2)
+        expect(f"C{b + 30}", 2, "GND")
+        track(tn, (tn[0], round(tn[1] - 1.02, 3)), "GND", width=0.25)
+        via((tn[0], round(tn[1] - 1.02, 3)), "GND")
+
+        # ---- ESD arrays. Each takes the four lines of one bundle: on the back from the tap vias under the
+        #      connector to a via beside each pad. North array = bundle above the tap rows, south = below.
+        def cell(ref, cx, cy):
+            """Vias around one array (rotated 90 degrees): beside its end pads, beyond its middle pads."""
+            at = {n: pad_xy(ref, n) for n in range(1, 7)}
+            assert abs(at[2][0] - cx) < 1e-3 and abs(at[2][1] - (cy + 0.71)) < 0.02, (ref, at)
+            assert at[1][0] < cx < at[3][0] and at[6][0] < cx < at[4][0] and at[5][1] < cy, (ref, at)
+            v = {1: (round(cx - 1.05, 3), at[1][1]), 2: (cx, round(cy + 1.46, 3)), 3: (round(cx + 1.05, 3), at[3][1]),
+                 4: (round(cx + 1.05, 3), at[4][1]), 5: (cx, round(cy - 1.46, 3)), 6: (round(cx - 1.05, 3), at[6][1])}
+            for n in range(1, 7):
+                netname = design.NET[(ref, str(n))]
+                if netname:
+                    track(at[n], v[n], netname, width=0.2 if netname in POWER_NETS else TRACK)
+                    via(v[n], netname)
+            return v, at
+
+        N1, N2, N3, N4 = round(yA - 1.1, 3), round(yA - 0.8, 3), round(yA - 0.5, 3), yA      # north lanes
+        S3, S4 = round(yD + 0.5, 3), round(yD + 0.8, 3)                                    # south lanes 3, 4
+        for side, north, south in ((-1, 4, 3), (1, 1, 2)):
+            cx = round(bx + side * ESD_X, 3)
+            vn, pn = cell(f"U{b + north}", cx, ESD_N)
+            vs, ps = cell(f"U{b + south}", cx, ESD_S)
+            for (ref, v) in ((f"U{b + north}", vn), (f"U{b + south}", vs)):
+                expect(ref, 3, "GND"), expect(ref, 6, "AVDD")
+            cn1, cn2 = pad_xy(f"C{b + 40 + north}", 1), pad_xy(f"C{b + 40 + north}", 2)
+            cs1, cs2 = pad_xy(f"C{b + 40 + south}", 1), pad_xy(f"C{b + 40 + south}", 2)
+            expect(f"C{b + 40 + north}", 1, "AVDD"), expect(f"C{b + 40 + south}", 2, "GND")
+            path([pn[3], cn2, cs2], "GND")                  # ground: north array pin 3, both capacitors
+            path([cn1, cs1, ps[6]], "AVDD")                 # supply: both capacitors, south array pin 6
+            e, w = cx + 1.55, cx - 1.55
+            if side < 0:
+                xj = bx - 5.2
+                routes = [
+                    # north bundle, heading west
+                    (3, f"U{b + north}", 4, [(xs[3], yB), (xs[3], N1), (e, N1), (e, vn[4][1]), vn[4]], FINE),
+                    (2, f"U{b + north}", 2, [(xs[2], yA), (xs[2], N2), (cx + 0.27, N2), vn[2]], None),
+                    (1, f"U{b + north}", 1, [(xs[1], yB), (xs[1], N3), (vn[1][0], N3), vn[1]], FINE),
+                    (0, f"U{b + north}", 5, [(xs[0], yA), (w, N4), (w, vn[5][1]), vn[5]], None),
+                    # south bundle
+                    (5, f"U{b + south}", 5, [(xs[5], yC), (xj, yC), (xj - (yC - vs[5][1]), vs[5][1]), vs[5]], None),
+                    (4, f"U{b + south}", 4, [(xs[4], yD), (xj, yD), (xj - (yD - vs[4][1]), vs[4][1]), vs[4]], None),
+                    (6, f"U{b + south}", 2, [(xs[6], yD), (xs[6], S3), (xj, S3), (xj - (vs[2][1] - S3), vs[2][1]),
+                                             vs[2]], None),
+                    (7, f"U{b + south}", 1, [(xs[7], yC), (xs[7], S4), (xj + 0.2, S4),
+                                             (xj + 0.2 - (vs[2][1] + 0.5 - S4), vs[2][1] + 0.5),
+                                             (vs[1][0], vs[2][1] + 0.5), vs[1]], FINE),
+                ]
+            else:
+                xj = bx + 5.2
+                routes = [
+                    # north bundle, heading east
+                    (12, f"U{b + north}", 5, [(xs[12], yB), (xs[12], N1), (w, N1), (w, vn[5][1]), vn[5]], FINE),
+                    (13, f"U{b + north}", 1, [(xs[13], yA), (xs[13], N2), (vn[1][0], N2), vn[1]], None),
+                    (14, f"U{b + north}", 2, [(xs[14], yB), (xs[14], N3), (cx - (N3 - vn[2][1]), N3), vn[2]], FINE),
+                    (15, f"U{b + north}", 4, [(xs[15], yA), (e, N4), (e, vn[4][1]), vn[4]], None),
+                    # south bundle
+                    (11, f"U{b + south}", 4, [(xs[11], yC), (xj, yC), (xj + (yC - vs[5][1] + 0.5), vs[5][1] - 0.5),
+                                              (vs[4][0], vs[5][1] - 0.5), vs[4]], None),
+                    (10, f"U{b + south}", 5, [(xs[10], yD), (xj, yD), (xj + (yD - vs[5][1]), vs[5][1]), vs[5]], None),
+                    (9, f"U{b + south}", 1, [(xs[9], yC), (xs[9], S3), (xj, S3), (xj + (vs[1][1] - S3), vs[1][1]),
+                                             vs[1]], FINE),
+                    (8, f"U{b + south}", 2, [(xs[8], yD), (xs[8], S4), (xj - 0.2, S4),
+                                             (xj - 0.2 + (vs[2][1] - S4), vs[2][1]), vs[2]], None),
+                ]
+            for k, ref, pin, pts, first in routes:
+                assert abs(pts[0][1] - taps[k]) < 1e-3, (k, pts[0], taps[k])
+                expect(ref, pin, e_nets[k])
+                path(pts, e_nets[k], BCU, first=first)
+
+        # ---- bias array: vias for its three connected pins, and its capacitor
+        cx = round(bx - ESD_X, 3)
+        ub, cb = f"U{b + 5}", f"C{b + 45}"
+        vb, pb = cell(ub, cx, ESD_BIAS)
+        expect(ub, 1, "BIAS"), expect(cb, 1, "AVDD")
+        track(pad_xy(cb, 1), pb[6], "AVDD", width=0.2)
+        gv = (round(pad_xy(cb, 2)[0] + 0.72, 3), pad_xy(cb, 2)[1])
+        track(pad_xy(cb, 2), gv, "GND", width=0.2)
+        via(gv, "GND")
+
+    # ---- ground pads that sit among signal tracks get their own via, so they do not depend on the pour:
+    #      the shield links and, on converter B, the clock pull-down
     for b in (100, 200):
-        for n in range(1, 6):
-            g, cg = pad_xy(f"U{b + n}", 3), pad_xy(f"C{b + 40 + n}", 2)
-            assert abs(g[0] - cg[0]) < 0.1, (b, n, g, cg)
-            side = 1 if n >= 3 else -1                  # towards the connector
-            vp = (round(g[0] + side * 1.0, 3), round((g[1] + cg[1]) / 2, 3))
-            track(g, vp, "GND", width=0.2)
-            track(cg, vp, "GND", width=0.2)
-            via(vp, "GND")
+        for ref, step in ((f"R{b + 22}", (0.75, 0)), (f"R{b + 23}", (0, -0.75))):
+            for num in ("1", "2"):
+                if design.NET[(ref, num)] == "GND":
+                    q = pad_xy(ref, num)
+                    vp = (round(q[0] + step[0], 3), round(q[1] + step[1], 3))
+                    track(q, vp, "GND", width=0.2)
+                    via(vp, "GND")
 
-    # ---- fixed ground: a bus through each capacitor column with a via at its ends, and a via for every
-    #      group of ground pins under each converter. The autorouter then works around them.
+    # ---- fixed ground: a bus through each capacitor column, with vias where the fan-out lanes leave room
     def chain(points, ends):
         for a, b in zip(points[:-1], points[1:]):
             track(a, b, "GND", width=0.2)
@@ -323,28 +538,16 @@ def main():
             pts = sorted((pad_xy(f"C{b + 1 + order.index(p)}", 2) for p in pins), key=lambda q: q[1])
             chain(pts, [((pts[0][0], round(pts[0][1] - 0.95, 3)), pts[0]), ((pts[-1][0], round(pts[-1][1] + 0.95, 3)), pts[-1])])
         left = sorted((pad_xy(f"C{c + n}", 2) for n in (6, 7, 4, 5, 13, 12, 3, 2, 15)), key=lambda q: q[1])
-        chain(left, [((left[0][0], round(left[0][1] - 0.95, 3)), left[0]), ((round(left[-1][0] - 0.95, 3), left[-1][1]), left[-1])])
+        lx = left[0][0]
+        gaps = [round(cy + FAN_TOP - FAN_PITCH * (n + 0.5), 3) for n in (0, 3)]     # between two lanes
+        chain(left, [((lx, round(left[0][1] - 0.95, 3)), left[0])] + [((round(lx - 0.775, 3), g), (lx, g)) for g in gaps])
         r1 = sorted((pad_xy(f"C{c + n}", 2) for n in (0, 1, 9)), key=lambda q: q[1])
         chain(r1 + [], [((r1[-1][0], round(r1[-1][1] + 0.95, 3)), r1[-1])])
         track(r1[0], pad_xy(f"C{c + 8}", 2), "GND", width=0.2)
-        r2 = sorted((pad_xy(f"C{c + n}", 2) for n in (14, 11)), key=lambda q: q[1])
-        chain(r2, [((r2[0][0], round(r2[0][1] - 0.95, 3)), r2[0])])
-        # ground pins of the converter: neighbours share a via 0.9 mm inside the pad row
-        groups = [(49,), (51,), (53,), (57, 58), (20,), (23,), (25,), (31, 32), (33,), (41, 42), (44, 45, 46)]
-        for grp in groups:
-            pts = [pad_xy(f"U{b}", n) for n in grp]
-            mx, my = sum(q[0] for q in pts) / len(pts), sum(q[1] for q in pts) / len(pts)
-            dx, dy = bx - mx, cy - my
-            if abs(dx) > abs(dy):                           # pin on the left or right side: go horizontally
-                step = (1.65 if dx > 0 else -1.65, 0)
-            else:
-                step = (0, 1.65 if dy > 0 else -1.65)
-            vp = (round(mx + step[0], 3), round(my + step[1], 3))
-            for q in pts:
-                knee = (round(q[0] + step[0] * 0.55, 3), round(q[1] + step[1] * 0.55, 3))
-                track(q, knee, "GND", width=FINE)
-                track(knee, vp, "GND", width=FINE)
-            via(vp, "GND")
+        # the two capacitors beside pin 28 are not joined, so that the VCAP1 track can pass between them
+        g_up, g_dn = pad_xy(f"C{c + 11}", 2), pad_xy(f"C{c + 14}", 2)
+        chain([g_up], [((g_up[0], round(g_up[1] - 1.1, 3)), g_up)])
+        chain([g_dn], [((round(g_dn[0] + 0.775, 3), round(g_dn[1] - 0.2, 3)), g_dn)])
 
     # ---- planes: layer 2 is ground everywhere; layer 3 carries +3V3 (top) and AVDD (bottom)
     def zone(netname, layer, pts, prio=0, name=""):
@@ -390,6 +593,35 @@ def main():
     for x, y in [(26.2, 4.0), (31.2, 4.0), (31.2, 12.4), (26.2, 12.4)]:
         o.Append(FromMM(OX + x), FromMM(OY + y))
     board.Add(k)
+
+    # ---- every ground pad not yet on a fixed ground track gets a via of its own, as close as one fits.
+    #      Without this, which pads end up cut off from the pours depends on what the router leaves free.
+    import math
+    import lastmile as L
+    space = L.Space(board, "GND")
+    gnd_tracks = [t for t in board.GetTracks() if t.GetNetname() == "GND" and not isinstance(t, pcbnew.PCB_VIA)]
+    ring = sorted(((dx * 0.05, dy * 0.05) for dx in range(-44, 45) for dy in range(-44, 45)
+                   if 0.55 <= math.hypot(dx, dy) * 0.05 <= 2.2), key=lambda o: o[0] ** 2 + o[1] ** 2)
+    own, none = 0, []
+    for ref in sorted(fps):
+        for pad in fps[ref].Pads():
+            if pad.GetNetname() != "GND" or pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+                continue
+            if any(pad.HitTest(t.GetStart()) or pad.HitTest(t.GetEnd()) for t in gnd_tracks):
+                continue
+            layer = pcbnew.F_Cu if pad.IsOnLayer(pcbnew.F_Cu) else pcbnew.B_Cu
+            x, y = ToMM(pad.GetPosition().x) - OX, ToMM(pad.GetPosition().y) - OY
+            for dx, dy in ring:
+                vp = (round(x + dx, 3), round(y + dy, 3))
+                if space.via_ok(*vp) and space.track_ok((x, y), vp, layer):
+                    track((x, y), vp, "GND", layer=layer, width=0.2)
+                    via(vp, "GND")
+                    space.holes.append((V(*vp).x, V(*vp).y))
+                    own += 1
+                    break
+            else:
+                none.append(f"{ref}.{pad.GetNumber()}")
+    print(f"ground vias placed beside pads: {own}" + (f"; no room at {', '.join(none)}" if none else ""))
 
     out = os.path.join(POD, "emg-pod-unrouted.kicad_pcb")
     pcbnew.SaveBoard(out, board)
