@@ -35,6 +35,7 @@ CONN_Y = None                   # set once the connector footprint has been meas
 CHIP_Y = 29.9
 ROW1, ROW2 = 39.75, 37.7         # resistor-array rows (centre lines)
 XIAO_X0, XIAO_Y0 = 28.0, 1.0
+BOTTOM = {"TP19", "TP20", "TP21", "TP22"}      # bare pads on the back; no parts are assembled there
 
 
 def V(x, y):
@@ -72,14 +73,18 @@ def placement():
     P["Q1"] = (14.2, 17.0, 0)
     P["R20"] = (25.0, 21.6, 90)
     # ---- test points
-    grid = ["TP10", "TP11", "TP12", "TP13", "TP14", "TP15", "TP16", "TP17", "TP18", "TP3",
-            "TP19", "TP20", "TP21", "TP22"]
+    grid = ["TP10", "TP11", "TP12", "TP13", "TP14", "TP15", "TP16", "TP17", "TP18", "TP3"]
     for i, r in enumerate(grid):
         P[r] = (11.6 + 2.2 * (i % 7), 9.6 + 2.2 * (i // 7), 0)
     P["TP1"] = (2.0, 13.0, 0)
     P["TP4"] = (2.0, 15.4, 0)
     P["TP5"] = (9.3, 17.4, 0)
     P["TP2"] = (5.5, 17.4, 0)
+    # SWD rescue pads on the back of the board, beneath the XIAO's own SWD pads
+    P["TP19"] = (47.0, 6.2, 0)
+    P["TP20"] = (47.0, 13.6, 0)
+    P["TP21"] = (44.5, 6.2, 0)
+    P["TP22"] = (44.5, 13.6, 0)
     P["TP30"] = (2.0, 17.8, 0)
     P["TP31"] = (2.0, 20.2, 0)
     # ---- the two converter blocks, identical
@@ -115,9 +120,9 @@ def placement():
         P[f"R{b + 20}"] = (bx + 1.7, cy - 8.1, 270)        # PWDN pull-up
         # ESD arrays and their capacitors, either side of the resistor arrays
         # ESD arrays and their capacitors in the corners beside the connector; the bias one above it
-        for n, dx, y in [(4, -10.2, 42.4), (3, -10.2, 45.6), (2, 10.2, 42.4), (1, 10.2, 45.6)]:
-            P[f"U{b + n}"] = (bx + dx, y, 0)
-            P[f"C{b + 40 + n}"] = (bx + dx, y + 1.6, 0)
+        for n, dx, y in [(4, -10.2, 42.2), (3, -10.2, 46.0), (2, 10.2, 42.2), (1, 10.2, 46.0)]:
+            P[f"U{b + n}"] = (bx + dx, y, 90)              # pads in two rows, so every one can be reached
+            P[f"C{b + 40 + n}"] = (bx + dx, y + 1.9, 0)
         P[f"U{b + 5}"] = (bx - 9.6, 37.9, 90)
         P[f"C{b + 45}"] = (bx - 9.6, 40.0, 0)
         P[f"R{b + 22}"] = (bx + 6.2, 40.2, 0)             # shield link
@@ -145,6 +150,7 @@ def main():
     ds.m_ViasMinAnnularWidth = FromMM(0.1)
     ds.m_CopperEdgeClearance = FromMM(0.3)
     ds.m_HoleToHoleMin = FromMM(0.25)
+    ds.m_HoleClearance = FromMM(0.2)
     ds.SetBoardThickness(FromMM(1.6))
     ns = ds.m_NetSettings
     dflt = ns.GetDefaultNetclass()
@@ -219,6 +225,8 @@ def main():
         if ref[0] in "CR" and not ref.startswith("RN"):
             t.SetVisible(False)
         board.Add(fp)
+        if ref in BOTTOM:                                # flipping needs the footprint to be on a board
+            fp.Flip(fp.GetPosition(), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
         for pad in fp.Pads():
             num = pad.GetNumber()
             if num == "":
@@ -304,7 +312,7 @@ def main():
     full = [(0, 0), (W, 0), (W, H), (0, H)]
     zone("GND", pcbnew.In1_Cu, full, 0, "ground plane")
     zone("GND", pcbnew.In2_Cu, full, 0, "ground fill")
-    zone("AVDD", pcbnew.In2_Cu, [(1.5, 22.5), (W - 1.5, 22.5), (W - 1.5, 41.0), (1.5, 41.0)], 1, "analog supply")
+    zone("AVDD", pcbnew.In2_Cu, [(1.0, 22.5), (W - 1.0, 22.5), (W - 1.0, H - 1.0), (1.0, H - 1.0)], 1, "analog supply")
 
     # ---- antenna keep-out: no copper on any layer under and beside the XIAO's antenna end
     k = pcbnew.ZONE(board)
